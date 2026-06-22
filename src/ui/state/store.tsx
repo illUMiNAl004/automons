@@ -1,13 +1,22 @@
 // ============================================================================
 // store.tsx — The UI's single GameState, updated via a reducer that delegates
-// to the PURE engine (src/engine/shop.ts). The UI is a function of this state.
+// to the PURE engine (shop.ts / run.ts). The UI is a function of this state.
 //
-// The engine never touches React; this file never touches game rules. Every
-// action maps 1:1 to a pure engine function, so the UI can't desync from logic.
+// The engine never touches React; this file never touches game rules. A small
+// transient `battle` session (player team + opponent + precomputed event log)
+// lives alongside the reducer while the battle animation plays.
 // ============================================================================
 
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
-import type { GameState } from '../../engine/types';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import type { BattleResult, GameState, MonsterInstance, RunPhase } from '../../engine/types';
 import {
   createRun,
   buyMonster,
@@ -18,8 +27,11 @@ import {
   toggleFreezeMonster,
   toggleFreezeItem,
   nextTurn,
+  getTeam,
 } from '../../engine/shop';
-import { makeInstance } from '../../engine/battle';
+import { makeInstance, resolveBattle } from '../../engine/battle';
+import { generateOpponent } from '../../engine/opponent';
+import { applyOutcome } from '../../engine/run';
 import { getMonsterDef } from '../../engine/data/monsters';
 
 export type GameAction =
@@ -30,7 +42,8 @@ export type GameAction =
   | { type: 'REROLL' }
   | { type: 'FREEZE_MONSTER'; slot: number }
   | { type: 'FREEZE_ITEM'; slot: number }
-  | { type: 'NEXT_TURN' }
+  | { type: 'SET_PHASE'; phase: RunPhase }
+  | { type: 'RESOLVE_BATTLE'; winner: BattleResult['winner'] }
   | { type: 'RESET'; seed: number };
 
 function reducer(state: GameState, action: GameAction): GameState {
@@ -49,14 +62,25 @@ function reducer(state: GameState, action: GameAction): GameState {
       return toggleFreezeMonster(state, action.slot);
     case 'FREEZE_ITEM':
       return toggleFreezeItem(state, action.slot);
-    case 'NEXT_TURN':
-      return nextTurn(state);
+    case 'SET_PHASE':
+      return { ...state, phase: action.phase };
+    case 'RESOLVE_BATTLE': {
+      const out = applyOutcome(state, action.winner);
+      // Keep playing → roll into the next shop turn. Game over → stop on won/lost.
+      return out.phase === 'result' ? nextTurn(out) : out;
+    }
     case 'RESET':
       return createRun(action.seed);
   }
 }
 
-/** Bound action creators — a thin, stable wrapper over dispatch. */
+/** Transient battle data, present only while phase === 'battle'. */
+export interface BattleSession {
+  playerTeam: MonsterInstance[];
+  opponent: MonsterInstance[];
+  result: BattleResult;
+}
+
 export interface GameActions {
   buyMonster: (slot: number, targetIndex?: number) => void;
   buyItem: (slot: number, targetId: string) => void;
@@ -65,12 +89,16 @@ export interface GameActions {
   reroll: () => void;
   freezeMonster: (slot: number) => void;
   freezeItem: (slot: number) => void;
-  nextTurn: () => void;
+  /** Generate an opponent, simulate the fight, and enter the battle phase. */
+  startBattle: () => void;
+  /** Apply the battle outcome and advance (next shop turn, or win/lose). */
+  finishBattle: () => void;
   reset: () => void;
 }
 
 interface GameContextValue {
   state: GameState;
+  battle: BattleSession | null;
   actions: GameActions;
 }
 
@@ -79,7 +107,6 @@ const GameContext = createContext<GameContextValue | null>(null);
 // UI-side randomness is fine (only the ENGINE must be deterministic-by-seed).
 const freshSeed = () => Math.floor(Math.random() * 1_000_000_000);
 
-/** Initial state, with an optional dev-only `?demo` curated team for previews. */
 function initialState(): GameState {
   const base = createRun(freshSeed());
   if (typeof window !== 'undefined' && window.location.search.includes('demo')) {
@@ -98,17 +125,24 @@ function demoState(base: GameState): GameState {
     gold: 7,
     trophies: 2,
     team: [
-      mk('cinderpup', 0, { level: 2 }), // fire, leveled (⭐)
-      mk('dewdrop', 1, { startShield: 2 }), // water, shield from Shell
-      mk('sprout', 2, { bonusAtk: 2 }), // nature, Raw Meat buff
-      mk('boulderpup', 3), // earth
-      mk('magmaw', 4), // fire
+      mk('cinderpup', 0, { level: 2 }),
+      mk('dewdrop', 1, { startShield: 2 }),
+      mk('sprout', 2, { bonusAtk: 2 }),
+      mk('boulderpup', 3),
+      mk('magmaw', 4),
     ],
   };
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, 0, initialState);
+  const [battle, setBattle] = useState<BattleSession | null>(null);
+
+  // Refs to read the latest values inside stable action callbacks.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const battleRef = useRef(battle);
+  battleRef.current = battle;
 
   const actions = useMemo<GameActions>(
     () => ({
@@ -119,13 +153,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
       reroll: () => dispatch({ type: 'REROLL' }),
       freezeMonster: (slot) => dispatch({ type: 'FREEZE_MONSTER', slot }),
       freezeItem: (slot) => dispatch({ type: 'FREEZE_ITEM', slot }),
-      nextTurn: () => dispatch({ type: 'NEXT_TURN' }),
-      reset: () => dispatch({ type: 'RESET', seed: freshSeed() }),
+      startBattle: () => {
+        const s = stateRef.current;
+        const playerTeam = getTeam(s);
+        if (playerTeam.length === 0) return; // need at least one pet
+        const opponent = generateOpponent(s.turn, s.seed);
+        const result = resolveBattle(playerTeam, opponent, s.seed);
+        setBattle({ playerTeam, opponent, result });
+        dispatch({ type: 'SET_PHASE', phase: 'battle' });
+      },
+      finishBattle: () => {
+        const b = battleRef.current;
+        if (!b) return;
+        dispatch({ type: 'RESOLVE_BATTLE', winner: b.result.winner });
+        setBattle(null);
+      },
+      reset: () => {
+        setBattle(null);
+        dispatch({ type: 'RESET', seed: freshSeed() });
+      },
     }),
     [],
   );
 
-  const value = useMemo(() => ({ state, actions }), [state, actions]);
+  const value = useMemo(() => ({ state, battle, actions }), [state, battle, actions]);
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
 

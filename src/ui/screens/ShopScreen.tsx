@@ -153,7 +153,7 @@ export function ShopScreen() {
               <div>Drag a pet to buy · drop on a twin to merge</div>
               <div>Drag a teammate to the shop to sell · {teamN}/{CONFIG.benchMax} on team</div>
             </div>
-            <WoodButton label="End turn" icon="⚔️" onClick={actions.nextTurn} />
+            <WoodButton label="End turn" icon="⚔️" onClick={actions.startBattle} disabled={teamN === 0} />
           </div>
         </div>
 
