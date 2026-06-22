@@ -32,6 +32,25 @@ export function monsterEmoji(speciesId: string): string {
   return MONSTER_EMOJI[speciesId] ?? '❓';
 }
 
+/**
+ * Real art auto-wiring: drop `{id}.png` (transparent, square) into
+ * src/assets/monsters/ and it's picked up here with ZERO code changes.
+ * Until then, monsterImage() returns null and the UI falls back to the emoji.
+ */
+const ART_FILES = import.meta.glob('../assets/monsters/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+const ART_BY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(ART_FILES).map(([path, url]) => [path.split('/').pop()!.replace('.png', ''), url]),
+);
+
+export function monsterImage(speciesId: string): string | null {
+  return ART_BY_ID[speciesId] ?? null;
+}
+
 /** Emoji for the three MVP items. */
 export const ITEM_EMOJI: Record<string, string> = {
   berry: '🍓',

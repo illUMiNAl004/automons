@@ -98,7 +98,44 @@ export const SHADOW = {
   cardHover: '0 18px 30px -8px rgba(10, 6, 30, 0.6)',
   cardDrag: '0 28px 46px -10px rgba(10, 6, 30, 0.7)',
   creature: 'drop-shadow(0 6px 5px rgba(10, 6, 30, 0.45))', // under the creature art itself
+  creatureLift: 'drop-shadow(0 18px 12px rgba(10, 6, 30, 0.5))', // while being dragged
   panel: '0 8px 24px -10px rgba(0, 0, 0, 0.5)',
+};
+
+/**
+ * SCENE — the "game world" palette: a cartoon meadow stage (sky → mountains →
+ * tree-line → striped grass), stone pedestals the pets stand on, wooden signs,
+ * and chunky orange wooden buttons. This is what replaces the card chrome.
+ */
+export const SCENE = {
+  skyTop: '#74c7f4',
+  skyHorizon: '#cdeeff',
+  cloud: 'rgba(255,255,255,0.92)',
+  sun: '#fff3c4',
+  mountainFar: '#a6c3dc',
+  mountainNear: '#86b07f',
+  hillsBack: '#3f9f55',
+  hillsFront: '#57b95f',
+  grassDark: '#54b257',
+  grassMid: '#65c163',
+  grassLight: '#7ace6f',
+  dirt: '#cf9a57',
+  dirtDark: '#a9763b',
+  stoneTop: '#cfd5de',
+  stoneBottom: '#9aa3b2',
+  stoneEdge: '#7c8595',
+  groundShadow: 'rgba(30,45,30,0.30)',
+  wood: '#b97636',
+  woodDark: '#7c4a1d',
+  sign: '#d2ab6e',
+  signDark: '#b78a4e',
+  orange: '#ff8d2e',
+  orangeDark: '#e9701a',
+  orangeEdge: '#bd560f',
+  hudShell: '#43321f',
+  hudShellLight: '#5d472d',
+  parchment: '#fff7e6',
+  parchmentEdge: '#e7cfa0',
 };
 
 /**

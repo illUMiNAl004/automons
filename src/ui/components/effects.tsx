@@ -10,7 +10,7 @@ import { MOTION, SURFACE } from '../theme';
 
 export interface Fx {
   id: number;
-  kind: 'coins' | 'merge';
+  kind: 'coins' | 'merge' | 'poof';
   x: number; // screen-space origin
   y: number;
 }
@@ -79,16 +79,42 @@ function MergeFlash({ at, onDone }: { at: { x: number; y: number }; onDone: () =
   );
 }
 
+function Poof({ at, onDone }: { at: { x: number; y: number }; onDone: () => void }) {
+  const puffs = [
+    { dx: -22, dy: -6 },
+    { dx: 22, dy: -6 },
+    { dx: 0, dy: -24 },
+    { dx: -12, dy: 8 },
+    { dx: 14, dy: 8 },
+  ];
+  return (
+    <div className="absolute" style={{ left: at.x, top: at.y }}>
+      {puffs.map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-2xl"
+          style={{ marginLeft: -12, marginTop: -12 }}
+          initial={{ x: 0, y: 0, scale: 0.4, opacity: 0.9 }}
+          animate={{ x: p.dx, y: p.dy, scale: 1.2, opacity: 0 }}
+          transition={{ duration: 0.45, ease: MOTION.ease }}
+          onAnimationComplete={() => i === puffs.length - 1 && onDone()}
+        >
+          💨
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export function FxOverlay({ effects, remove }: { effects: Fx[]; remove: (id: number) => void }) {
   return (
     <div className="pointer-events-none fixed inset-0 z-50">
-      {effects.map((fx) =>
-        fx.kind === 'coins' ? (
-          <CoinBurst key={fx.id} from={{ x: fx.x, y: fx.y }} onDone={() => remove(fx.id)} />
-        ) : (
-          <MergeFlash key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={() => remove(fx.id)} />
-        ),
-      )}
+      {effects.map((fx) => {
+        const done = () => remove(fx.id);
+        if (fx.kind === 'coins') return <CoinBurst key={fx.id} from={{ x: fx.x, y: fx.y }} onDone={done} />;
+        if (fx.kind === 'poof') return <Poof key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={done} />;
+        return <MergeFlash key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={done} />;
+      })}
     </div>
   );
 }

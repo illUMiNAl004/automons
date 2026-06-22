@@ -1,10 +1,10 @@
 // ============================================================================
-// ShopScreen.tsx — The whole shop phase: HUD + shop row + team + controls.
-// Owns the @dnd-kit DndContext and translates drops into engine actions, and
-// spawns the one-shot juice effects (coin burst on sell, flash on merge).
+// ShopScreen.tsx — The shop phase rendered as a living meadow scene. Pets stand
+// on stone pedestals (team lane + shop lane); wooden signs label the areas;
+// chunky Roll / End-turn buttons sit in the corners. Owns the DnD + juice.
 // ============================================================================
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -15,17 +15,23 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '../state/store';
 import { makeInstance } from '../../engine/battle';
 import { CONFIG } from '../../engine/config';
 import { getTeam } from '../../engine/shop';
-import { MOTION, RADII, SURFACE } from '../theme';
+import { Background } from '../components/Background';
 import { Hud } from '../components/Hud';
-import { Board, SellZone } from '../components/Board';
-import { CreatureCard } from '../components/MonsterCard';
-import { ItemChip, ShopItemSlot, ShopMonsterSlot, type DragData } from '../components/ShopSlot';
+import { Signpost } from '../components/Signpost';
+import { WoodButton } from '../components/WoodButton';
+import {
+  PetFigure,
+  ItemFigure,
+  TeamSlot,
+  ShopMonsterPedestal,
+  ShopItemPedestal,
+} from '../components/Pet';
 import { FxOverlay, type Fx } from '../components/effects';
+import type { DragData } from '../components/dnd';
 
 export function ShopScreen() {
   const { state, actions } = useGame();
@@ -33,11 +39,8 @@ export function ShopScreen() {
   const [effects, setEffects] = useState<Fx[]>([]);
   const fxId = useRef(0);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), // clicks still quick-buy
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  // Build display instances for shop monsters (shop stores defs, cards need instances).
   const monsterPreviews = useMemo(
     () => state.shop.monsterSlots.map((def, i) => (def ? makeInstance(def, `shop-m-${i}`) : null)),
     [state.shop.monsterSlots],
@@ -47,10 +50,8 @@ export function ShopScreen() {
   const affordItem = state.gold >= CONFIG.itemCost;
   const teamN = getTeam(state).length;
 
-  const spawn = (kind: Fx['kind'], x: number, y: number) =>
-    setEffects((e) => [...e, { id: fxId.current++, kind, x, y }]);
+  const spawn = (kind: Fx['kind'], x: number, y: number) => setEffects((e) => [...e, { id: fxId.current++, kind, x, y }]);
   const removeFx = (id: number) => setEffects((e) => e.filter((f) => f.id !== id));
-
   const slotCenter = (index: number) => {
     const el = document.querySelector(`[data-slot="${index}"]`);
     if (!el) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -68,190 +69,123 @@ export function ShopScreen() {
     setActiveDrag(null);
     if (!a || !over) return;
 
-    if (a.kind === 'shop-monster') {
-      if (over.kind === 'slot' && over.index !== undefined) {
-        const dest = state.team[over.index];
-        const isMerge = !!dest && dest.speciesId === state.shop.monsterSlots[a.slot]?.id;
-        actions.buyMonster(a.slot, over.index);
-        if (isMerge) spawn('merge', ...xy(slotCenter(over.index)));
-      }
-    } else if (a.kind === 'shop-item') {
-      if (over.kind === 'slot' && over.index !== undefined) {
-        const target = state.team[over.index];
-        if (target) {
-          actions.buyItem(a.slot, target.instanceId);
-          spawn('merge', ...xy(slotCenter(over.index)));
-        }
+    if (a.kind === 'shop-monster' && over.kind === 'slot' && over.index !== undefined) {
+      const dest = state.team[over.index];
+      const isMerge = !!dest && dest.speciesId === state.shop.monsterSlots[a.slot]?.id;
+      actions.buyMonster(a.slot, over.index);
+      if (isMerge) { const c = slotCenter(over.index); spawn('merge', c.x, c.y); }
+    } else if (a.kind === 'shop-item' && over.kind === 'slot' && over.index !== undefined) {
+      const target = state.team[over.index];
+      if (target) {
+        actions.buyItem(a.slot, target.instanceId);
+        const c = slotCenter(over.index);
+        spawn('merge', c.x, c.y);
       }
     } else if (a.kind === 'team') {
       if (over.kind === 'sell') {
-        spawn('coins', ...xy(slotCenter(a.index)));
+        const c = slotCenter(a.index);
+        spawn('poof', c.x, c.y - 30);
+        spawn('coins', c.x, c.y);
         actions.sell(a.index);
       } else if (over.kind === 'slot' && over.index !== undefined && over.index !== a.index) {
         const from = state.team[a.index];
         const dest = state.team[over.index];
         const isMerge = !!from && !!dest && from.speciesId === dest.speciesId;
         actions.move(a.index, over.index);
-        if (isMerge) spawn('merge', ...xy(slotCenter(over.index)));
+        if (isMerge) { const c = slotCenter(over.index); spawn('merge', c.x, c.y); }
       }
     }
   }
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-5 py-5">
-        <Hud />
+      <div className="relative min-h-screen w-full overflow-hidden">
+        <Background />
 
-        {/* SHOP */}
-        <Panel>
-          <SectionHeader title="Shop" hint="Drag to buy · drop on a twin to merge">
-            <button
-              onClick={actions.reroll}
-              disabled={state.gold < CONFIG.rerollCost}
-              className="rounded-full px-4 py-1.5 text-sm font-bold transition-transform hover:scale-105 active:scale-95 disabled:opacity-40"
-              style={{ background: SURFACE.gold, color: '#4a3500' }}
-            >
-              🔄 Reroll · 1🪙
-            </button>
-          </SectionHeader>
+        <div className="relative z-10 flex min-h-screen flex-col px-5 py-4">
+          <Hud />
 
-          <div className="flex flex-wrap items-start justify-center gap-4 pt-2">
-            {monsterPreviews.map((preview, i) => (
-              <ShuffleIn key={`${state.seed}:m${i}`} index={i}>
-                <ShopMonsterSlot
+          <div className="flex flex-1 flex-col justify-center gap-1">
+            {/* TEAM LANE */}
+            <Lane>
+              {state.team.map((m, i) => (
+                <TeamSlot key={i} index={i} monster={m ?? null} />
+              ))}
+              <div className="mb-2 ml-1">
+                <Signpost label="Battle" arrow />
+              </div>
+            </Lane>
+
+            {/* SHOP LANE */}
+            <Lane>
+              <div className="mb-2 mr-1">
+                <Signpost label="Shop" />
+              </div>
+              {monsterPreviews.map((preview, i) => (
+                <ShopMonsterPedestal
+                  key={`${state.seed}:m${i}`}
                   slot={i}
-                  preview={preview}
+                  monster={preview}
                   frozen={state.shop.frozenMonsters[i] ?? false}
                   affordable={affordMonster}
                   onFreeze={() => actions.freezeMonster(i)}
                   onQuickBuy={() => actions.buyMonster(i)}
                 />
-              </ShuffleIn>
-            ))}
-
-            <div className="mx-1 self-stretch border-l border-white/10" />
-
-            {state.shop.itemSlots.map((item, i) => (
-              <ShuffleIn key={`${state.seed}:i${i}`} index={i + 3}>
-                <ShopItemSlot
+              ))}
+              <div className="mx-1 mb-6 h-16 w-px bg-black/15" />
+              {state.shop.itemSlots.map((item, i) => (
+                <ShopItemPedestal
+                  key={`${state.seed}:i${i}`}
                   slot={i}
                   item={item}
                   frozen={state.shop.frozenItems[i] ?? false}
                   affordable={affordItem}
                   onFreeze={() => actions.freezeItem(i)}
                 />
-              </ShuffleIn>
-            ))}
+              ))}
+            </Lane>
           </div>
-        </Panel>
 
-        {/* TEAM */}
-        <Panel>
-          <SectionHeader title={`Your Team · ${teamN}/${CONFIG.benchMax}`} hint="Drag to reorder · 🗑 to sell" />
-          <div className="flex flex-col items-center gap-5 pt-3">
-            <Board team={state.team} />
-            <SellZone active={activeDrag?.kind === 'team'} />
+          {/* CORNER CONTROLS */}
+          <div className="flex items-end justify-between">
+            <WoodButton label="Roll" icon="🎲" onClick={actions.reroll} disabled={state.gold < CONFIG.rerollCost} />
+            <div className="mb-1 hidden text-center text-xs font-bold text-white/70 sm:block">
+              <div>Drag a pet to buy · drop on a twin to merge</div>
+              <div>Drag a teammate to the shop to sell · {teamN}/{CONFIG.benchMax} on team</div>
+            </div>
+            <WoodButton label="End turn" icon="⚔️" onClick={actions.nextTurn} />
           </div>
-        </Panel>
-
-        {/* CONTROLS */}
-        <div className="flex items-center justify-center gap-3 pb-2">
-          <button
-            onClick={actions.nextTurn}
-            className="rounded-full px-6 py-2.5 text-sm font-extrabold text-white transition-transform hover:scale-105 active:scale-95"
-            style={{ background: 'linear-gradient(160deg, #6d5cf0, #4a37c8)', boxShadow: '0 8px 20px -6px rgba(74,55,200,0.7)' }}
-          >
-            Next Turn ▶
-          </button>
-          <button
-            disabled
-            title="Battles arrive in Milestone 3"
-            className="cursor-not-allowed rounded-full px-6 py-2.5 text-sm font-bold text-white/60"
-            style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${SURFACE.panelBorder}` }}
-          >
-            ⚔️ Fight (M3)
-          </button>
-          <button
-            onClick={actions.reset}
-            className="rounded-full px-5 py-2.5 text-sm font-bold text-white/70 transition-transform hover:scale-105 active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${SURFACE.panelBorder}` }}
-          >
-            ↺ New Run
-          </button>
         </div>
+
+        {/* lifted pet/item follows the cursor */}
+        <DragOverlay dropAnimation={null}>
+          {activeDrag && (
+            <div style={{ transform: 'rotate(3deg)' }}>
+              <DragGhost active={activeDrag} previews={monsterPreviews} />
+            </div>
+          )}
+        </DragOverlay>
+
+        <FxOverlay effects={effects} remove={removeFx} />
       </div>
-
-      {/* drag overlay — the moving card, tilted with a big shadow */}
-      <DragOverlay dropAnimation={null}>
-        {activeDrag && (
-          <div style={{ transform: 'rotate(4deg)', filter: 'drop-shadow(0 26px 32px rgba(8,4,24,0.6))' }}>
-            <DragGhost active={activeDrag} previews={monsterPreviews} />
-          </div>
-        )}
-      </DragOverlay>
-
-      <FxOverlay effects={effects} remove={removeFx} />
     </DndContext>
   );
 }
 
-// helper: spread a point into CoinBurst/MergeFlash args
-const xy = (p: { x: number; y: number }): [number, number] => [p.x, p.y];
+function Lane({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-end justify-center gap-1">{children}</div>;
+}
 
 function DragGhost({ active, previews }: { active: DragData; previews: (ReturnType<typeof makeInstance> | null)[] }) {
   const { state } = useGame();
   if (active.kind === 'shop-monster') {
     const p = previews[active.slot];
-    return p ? <CreatureCard monster={p} interactive={false} /> : null;
+    return p ? <PetFigure monster={p} interactive={false} lifted facing="left" /> : null;
   }
   if (active.kind === 'shop-item') {
     const it = state.shop.itemSlots[active.slot];
-    return it ? <ItemChip item={it} /> : null;
+    return it ? <ItemFigure item={it} lifted /> : null;
   }
   const m = state.team[active.index];
-  return m ? <CreatureCard monster={m} interactive={false} /> : null;
-}
-
-// ---- small layout helpers --------------------------------------------------
-
-function Panel({ children }: { children: ReactNode }) {
-  return (
-    <section
-      className="px-4 py-3"
-      style={{
-        background: SURFACE.panel,
-        border: `1px solid ${SURFACE.panelBorder}`,
-        borderRadius: RADII.panel,
-      }}
-    >
-      {children}
-    </section>
-  );
-}
-
-function SectionHeader({ title, hint, children }: { title: string; hint?: string; children?: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-base font-extrabold tracking-wide text-white/90">{title}</h2>
-        {hint && <p className="text-[11px] text-white/40">{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/** Staggered entry used to "shuffle" the shop in on each reroll. */
-function ShuffleIn({ children, index }: { children: ReactNode; index: number }) {
-  return (
-    <AnimatePresence mode="popLayout">
-      <motion.div
-        initial={{ opacity: 0, y: -14, rotate: -3 }}
-        animate={{ opacity: 1, y: 0, rotate: 0 }}
-        transition={{ duration: MOTION.base, ease: MOTION.ease, delay: index * 0.04 }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return m ? <PetFigure monster={m} interactive={false} lifted /> : null;
 }
