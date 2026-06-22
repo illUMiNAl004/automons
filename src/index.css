@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: 'Fredoka', ui-rounded, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden; /* the game is a fixed stage, not a scrolling page */
+    background: #0e1326;
+  }
+}

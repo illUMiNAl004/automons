@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { BattleEvent, BattleWinner, MonsterInstance, Side } from '../../engine/types';
 import { useGame } from '../state/store';
-import { Background } from '../components/Background';
+import { Stage } from '../components/Stage';
 import { Hud } from '../components/Hud';
 import { WoodButton } from '../components/WoodButton';
 import { PetFigure } from '../components/Pet';
@@ -178,13 +178,13 @@ export function BattleScene() {
   if (!battle) return null;
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      <Background />
-      <div className="relative z-10 flex min-h-screen flex-col px-5 py-4">
-        <Hud />
+    <div className="relative h-screen w-full overflow-hidden">
+      <Stage>
+        <div className="relative flex h-full flex-col px-5 py-3">
+          <Hud />
 
-        {/* the two armies face off across the field */}
-        <div className="flex flex-1 items-center justify-center gap-6">
+          {/* the two armies face off across the field, standing on the floor */}
+          <div className="flex flex-1 items-center justify-center gap-6 pb-4">
           <div className="flex flex-row-reverse items-end gap-1">
             <AnimatePresence>
               {boardA.map((p) => (
@@ -224,6 +224,7 @@ export function BattleScene() {
           </AnimatePresence>
         </div>
       </div>
+      </Stage>
 
       {/* intro flash */}
       <AnimatePresence>
@@ -279,7 +280,7 @@ function BattlePet({
       className="relative"
     >
       <motion.div animate={flash ? { scale: [1, 1.14, 1] } : { scale: 1 }} transition={{ duration: 0.22 }} style={{ filter: flash ? 'brightness(1.6) saturate(1.8)' : undefined }}>
-        <PetFigure monster={pet} facing={facing} interactive={false} />
+        <PetFigure monster={pet} size={92} facing={facing} interactive={false} />
       </motion.div>
 
       <AnimatePresence>

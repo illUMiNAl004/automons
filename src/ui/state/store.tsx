@@ -89,6 +89,8 @@ export interface GameActions {
   reroll: () => void;
   freezeMonster: (slot: number) => void;
   freezeItem: (slot: number) => void;
+  /** Leave the title screen and begin the run (reveal the shop). */
+  startRun: () => void;
   /** Generate an opponent, simulate the fight, and enter the battle phase. */
   startBattle: () => void;
   /** Apply the battle outcome and advance (next shop turn, or win/lose). */
@@ -110,9 +112,9 @@ const freshSeed = () => Math.floor(Math.random() * 1_000_000_000);
 function initialState(): GameState {
   const base = createRun(freshSeed());
   if (typeof window !== 'undefined' && window.location.search.includes('demo')) {
-    return demoState(base);
+    return demoState(base); // demo jumps straight to the shop for screenshots
   }
-  return base;
+  return { ...base, phase: 'title' }; // first load shows the title screen
 }
 
 /** Dev-only: a hand-built team showing every element, a level-2 merge, a shield. */
@@ -153,6 +155,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       reroll: () => dispatch({ type: 'REROLL' }),
       freezeMonster: (slot) => dispatch({ type: 'FREEZE_MONSTER', slot }),
       freezeItem: (slot) => dispatch({ type: 'FREEZE_ITEM', slot }),
+      startRun: () => dispatch({ type: 'SET_PHASE', phase: 'shop' }),
       startBattle: () => {
         const s = stateRef.current;
         const playerTeam = getTeam(s);

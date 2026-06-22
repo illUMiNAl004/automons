@@ -1,81 +1,83 @@
 // ============================================================================
-// Background.tsx — The cartoon meadow "stage". Full-bleed SVG: sky, sun, soft
-// clouds, two mountain layers, a bushy tree-line, and a striped grass field
-// with dirt paths. This is the world the pets live in (SAP-style).
+// Background.tsx — The meadow stage as SEPARATE parallax layers (sky / hills /
+// ground), so Stage.tsx can drift them at different depths and blur the far
+// one. FALLBACK when no painterly arena art is present; when art/{far,mid,
+// near}.png exist, Stage uses those images instead.
+//
+// Horizon sits high (≈45%) so the grass dominates and there's little dead sky.
 // ============================================================================
 
 import { SCENE } from '../theme';
 
-export function Background() {
+const H = 360; // horizon line in the 0..900 viewBox (high → grass dominates)
+
+/** Far layer: sky gradient, sun, clouds, distant mountains. (Gets DoF blur.) */
+export function SkyLayer() {
   return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 1600 900"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-    >
+    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden>
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={SCENE.skyTop} />
           <stop offset="100%" stopColor={SCENE.skyHorizon} />
-        </linearGradient>
-        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={SCENE.grassDark} />
-          <stop offset="100%" stopColor={SCENE.grassLight} />
         </linearGradient>
         <radialGradient id="sun" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#fffbe6" />
           <stop offset="100%" stopColor={SCENE.sun} stopOpacity="0" />
         </radialGradient>
       </defs>
-
-      {/* sky */}
-      <rect x="0" y="0" width="1600" height="560" fill="url(#sky)" />
-      <circle cx="1330" cy="150" r="190" fill="url(#sun)" />
-      <circle cx="1330" cy="150" r="70" fill="#fff6cf" />
-
-      {/* clouds */}
+      <rect x="0" y="0" width="1600" height={H} fill="url(#sky)" />
+      <circle cx="1300" cy="120" r="200" fill="url(#sun)" />
+      <circle cx="1300" cy="120" r="70" fill="#fff6cf" />
       <g fill={SCENE.cloud}>
-        <Cloud x={220} y={140} s={1.1} />
-        <Cloud x={760} y={90} s={0.85} />
-        <Cloud x={1080} y={210} s={1.0} />
-        <Cloud x={520} y={250} s={0.7} />
+        <Cloud x={240} y={86} s={1.15} />
+        <Cloud x={780} y={60} s={0.9} />
+        <Cloud x={1120} y={150} s={1.0} />
       </g>
+      <path d={`M-60 ${H} L240 ${H - 200} L450 ${H - 30} L660 ${H - 230} L900 ${H - 10} L1100 ${H - 180} L1360 ${H - 10} L1680 ${H - 200} L1680 ${H} Z`} fill={SCENE.mountainFar} opacity="0.85" />
+    </svg>
+  );
+}
 
-      {/* far mountains */}
-      <path d="M-50 560 L220 360 L430 520 L640 330 L880 540 L1080 380 L1330 540 L1650 360 L1650 560 Z" fill={SCENE.mountainFar} opacity="0.8" />
-      {/* nearer green ridge */}
-      <path d="M-50 575 L260 470 L520 560 L760 450 L1040 565 L1320 470 L1650 560 L1650 600 L-50 600 Z" fill={SCENE.mountainNear} />
-
-      {/* bushy tree-line */}
+/** Mid layer: nearer green ridge + a bushy tree-line. */
+export function HillsLayer() {
+  return (
+    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden>
+      <path d={`M-60 ${H + 24} L280 ${H - 70} L540 ${H + 18} L780 ${H - 80} L1060 ${H + 22} L1340 ${H - 66} L1680 ${H + 16} L1680 ${H + 90} L-60 ${H + 90} Z`} fill={SCENE.mountainNear} />
       <g fill={SCENE.hillsBack}>
-        {Array.from({ length: 26 }).map((_, i) => (
-          <circle key={i} cx={-40 + i * 66} cy={566} r={46 + ((i * 37) % 22)} />
+        {Array.from({ length: 28 }).map((_, i) => (
+          <circle key={i} cx={-40 + i * 62} cy={H + 20} r={48 + ((i * 37) % 22)} />
         ))}
       </g>
       <g fill={SCENE.hillsFront}>
-        {Array.from({ length: 30 }).map((_, i) => (
-          <circle key={i} cx={-20 + i * 56} cy={596} r={40 + ((i * 53) % 18)} />
+        {Array.from({ length: 32 }).map((_, i) => (
+          <circle key={i} cx={-20 + i * 53} cy={H + 50} r={42 + ((i * 53) % 18)} />
         ))}
       </g>
+    </svg>
+  );
+}
 
-      {/* grass field */}
-      <rect x="0" y="585" width="1600" height="315" fill="url(#grass)" />
-
-      {/* mowed stripes + dirt paths */}
-      <g opacity="0.6">
-        <rect x="0" y="612" width="1600" height="46" fill={SCENE.grassMid} />
-        <rect x="0" y="700" width="1600" height="56" fill={SCENE.grassMid} />
-        <rect x="0" y="804" width="1600" height="70" fill={SCENE.grassMid} />
+/** Near/foreground floor: grass field, mowed stripes, dirt paths, flowers. */
+export function GroundLayer() {
+  return (
+    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden>
+      <defs>
+        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={SCENE.grassDark} />
+          <stop offset="100%" stopColor={SCENE.grassLight} />
+        </linearGradient>
+      </defs>
+      <rect x="0" y={H + 8} width="1600" height={900 - H} fill="url(#grass)" />
+      <g opacity="0.5">
+        <rect x="0" y={H + 130} width="1600" height="70" fill={SCENE.grassMid} />
+        <rect x="0" y={H + 300} width="1600" height="100" fill={SCENE.grassMid} />
       </g>
-      <g fill={SCENE.dirt} opacity="0.85">
-        <rect x="0" y="688" width="1600" height="8" rx="4" />
-        <rect x="0" y="792" width="1600" height="9" rx="4" />
+      <g fill={SCENE.dirt} opacity="0.75">
+        <rect x="0" y={H + 215} width="1600" height="10" rx="5" />
+        <rect x="0" y={H + 410} width="1600" height="12" rx="6" />
       </g>
-
-      {/* little flowers / pebbles for charm */}
       <g>
-        {[[140, 670], [400, 740], [690, 690], [980, 760], [1230, 700], [1440, 660], [560, 830], [1080, 840]].map(
+        {[[150, H + 180], [430, H + 300], [720, H + 200], [1010, H + 360], [1270, H + 230], [1470, H + 170], [600, H + 410]].map(
           ([x, y], i) => (
             <g key={i} transform={`translate(${x} ${y})`}>
               <circle r="5" fill={i % 2 ? '#ffd34e' : '#ff8fb3'} />
@@ -91,9 +93,9 @@ export function Background() {
 function Cloud({ x, y, s }: { x: number; y: number; s: number }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`} opacity="0.95">
-      <ellipse cx="0" cy="0" rx="60" ry="30" />
-      <ellipse cx="48" cy="6" rx="44" ry="26" />
-      <ellipse cx="-46" cy="8" rx="40" ry="24" />
+      <ellipse cx="0" cy="0" rx="62" ry="30" />
+      <ellipse cx="50" cy="6" rx="44" ry="26" />
+      <ellipse cx="-48" cy="8" rx="40" ry="24" />
     </g>
   );
 }

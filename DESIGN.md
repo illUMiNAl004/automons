@@ -1,4 +1,4 @@
-# DESIGN.md — "ELEMENTAURI" (working title)
+# DESIGN.md — "Automons"
 
 A single-player, browser-based **creature-collector auto-battler**. Super Auto Pets' shop-and-auto-battle loop, wrapped in a Pokémon-style monster/type skin. No multiplayer. You play against procedurally generated bot teams that scale in strength each round.
 

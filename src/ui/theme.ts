@@ -139,6 +139,35 @@ export const SCENE = {
 };
 
 /**
+ * ATMOSPHERE — the cinematic grade layered over the whole stage: a soft vignette
+ * that darkens the edges, a gentle warm-top / cool-bottom color grade, and the
+ * depth-of-field blur applied to the far background so creatures pop.
+ */
+export const ATMOSPHERE = {
+  vignette: 'radial-gradient(125% 105% at 50% 36%, rgba(0,0,0,0) 52%, rgba(10,8,26,0.50) 100%)',
+  grade: 'linear-gradient(180deg, rgba(255,228,176,0.10) 0%, rgba(255,255,255,0) 42%, rgba(34,26,72,0.16) 100%)',
+  farBlurPx: 3,
+};
+
+/** Max pointer-parallax offset (px) per depth layer — far drifts least. */
+export const PARALLAX = { far: 7, mid: 16, near: 30, fg: 46 };
+
+/** Element-aware ambient particles that drift near each creature. */
+export const PARTICLES: Record<ElementKey, { color: string; char: string; rise: boolean; count: number }> = {
+  fire: { color: '#ffb24a', char: '●', rise: true, count: 5 },
+  water: { color: '#cdeeff', char: '✦', rise: true, count: 5 },
+  nature: { color: '#8fe3a2', char: '🍃', rise: false, count: 4 },
+  earth: { color: '#e0c39a', char: '●', rise: false, count: 4 },
+};
+
+/** A small type ramp for cohesive display text. */
+export const TYPE = {
+  title: 'clamp(44px, 9vw, 104px)',
+  banner: 'clamp(36px, 6vw, 64px)',
+  h2: '18px',
+};
+
+/**
  * Motion tokens. Keep everything short & eased — snappy, never janky.
  * Durations in seconds (Framer Motion).
  */

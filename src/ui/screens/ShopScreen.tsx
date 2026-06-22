@@ -1,10 +1,10 @@
 // ============================================================================
-// ShopScreen.tsx — The shop phase rendered as a living meadow scene. Pets stand
-// on stone pedestals (team lane + shop lane); wooden signs label the areas;
-// chunky Roll / End-turn buttons sit in the corners. Owns the DnD + juice.
+// ShopScreen.tsx — The shop phase as a meadow scene (inside the parallax Stage).
+// Your team stands on the arena floor; shop recruits stand on wooden crates.
+// Owns the @dnd-kit DndContext and spawns the juice effects.
 // ============================================================================
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -19,17 +19,11 @@ import { useGame } from '../state/store';
 import { makeInstance } from '../../engine/battle';
 import { CONFIG } from '../../engine/config';
 import { getTeam } from '../../engine/shop';
-import { Background } from '../components/Background';
+import { Stage } from '../components/Stage';
 import { Hud } from '../components/Hud';
 import { Signpost } from '../components/Signpost';
 import { WoodButton } from '../components/WoodButton';
-import {
-  PetFigure,
-  ItemFigure,
-  TeamSlot,
-  ShopMonsterPedestal,
-  ShopItemPedestal,
-} from '../components/Pet';
+import { PetFigure, ItemFigure, TeamSlot, ShopMonsterPedestal, ShopItemPedestal } from '../components/Pet';
 import { FxOverlay, type Fx } from '../components/effects';
 import type { DragData } from '../components/dnd';
 
@@ -99,26 +93,24 @@ export function ShopScreen() {
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className="relative min-h-screen w-full overflow-hidden">
-        <Background />
-
-        <div className="relative z-10 flex min-h-screen flex-col px-5 py-4">
+      <Stage>
+        <div className="relative flex h-full flex-col px-5 py-3">
           <Hud />
 
-          <div className="flex flex-1 flex-col justify-center gap-1">
-            {/* TEAM LANE */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 pb-8">
+            {/* TEAM — on the arena floor */}
             <Lane>
               {state.team.map((m, i) => (
                 <TeamSlot key={i} index={i} monster={m ?? null} />
               ))}
-              <div className="mb-2 ml-1">
+              <div className="mb-7 ml-1">
                 <Signpost label="Battle" arrow />
               </div>
             </Lane>
 
-            {/* SHOP LANE */}
+            {/* SHOP — recruits on crates */}
             <Lane>
-              <div className="mb-2 mr-1">
+              <div className="mb-7 mr-1">
                 <Signpost label="Shop" />
               </div>
               {monsterPreviews.map((preview, i) => (
@@ -132,7 +124,7 @@ export function ShopScreen() {
                   onQuickBuy={() => actions.buyMonster(i)}
                 />
               ))}
-              <div className="mx-1 mb-6 h-16 w-px bg-black/15" />
+              <div className="mx-1 mb-12 h-14 w-px bg-black/15" />
               {state.shop.itemSlots.map((item, i) => (
                 <ShopItemPedestal
                   key={`${state.seed}:i${i}`}
@@ -146,33 +138,30 @@ export function ShopScreen() {
             </Lane>
           </div>
 
-          {/* CORNER CONTROLS */}
-          <div className="flex items-end justify-between">
+          {/* corner controls */}
+          <div className="absolute bottom-4 left-5">
             <WoodButton label="Roll" icon="🎲" onClick={actions.reroll} disabled={state.gold < CONFIG.rerollCost} />
-            <div className="mb-1 hidden text-center text-xs font-bold text-white/70 sm:block">
-              <div>Drag a pet to buy · drop on a twin to merge</div>
-              <div>Drag a teammate to the shop to sell · {teamN}/{CONFIG.benchMax} on team</div>
-            </div>
+          </div>
+          <div className="absolute bottom-4 right-5">
             <WoodButton label="End turn" icon="⚔️" onClick={actions.startBattle} disabled={teamN === 0} />
           </div>
         </div>
+      </Stage>
 
-        {/* lifted pet/item follows the cursor */}
-        <DragOverlay dropAnimation={null}>
-          {activeDrag && (
-            <div style={{ transform: 'rotate(3deg)' }}>
-              <DragGhost active={activeDrag} previews={monsterPreviews} />
-            </div>
-          )}
-        </DragOverlay>
+      <DragOverlay dropAnimation={null}>
+        {activeDrag && (
+          <div style={{ transform: 'rotate(3deg)' }}>
+            <DragGhost active={activeDrag} previews={monsterPreviews} />
+          </div>
+        )}
+      </DragOverlay>
 
-        <FxOverlay effects={effects} remove={removeFx} />
-      </div>
+      <FxOverlay effects={effects} remove={removeFx} />
     </DndContext>
   );
 }
 
-function Lane({ children }: { children: React.ReactNode }) {
+function Lane({ children }: { children: ReactNode }) {
   return <div className="flex items-end justify-center gap-1">{children}</div>;
 }
 

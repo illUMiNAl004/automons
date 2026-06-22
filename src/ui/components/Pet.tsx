@@ -1,91 +1,108 @@
 // ============================================================================
-// Pet.tsx — Pets as actual creatures standing in the world (no cards). A pet
-// is the creature art (real PNG when present, emoji fallback) + floating
-// SAP-style ATK/HP coins + level pips + shield, with a hover info popover.
-// Plus the draggable team/shop variants and their droppable pedestals.
+// Pet.tsx — Creatures as the focal point. NO cards anywhere: you drag the actual
+// sprite. Your TEAM stands on the arena floor; shop RECRUITS stand on a wooden
+// crate. Stats are small floating badges at each creature's feet (type / ATK /
+// HP / shield); the name + ability show on hover. Real PNGs auto-replace the
+// emoji fallback. Every creature has a layered idle loop so the board lives.
 // ============================================================================
 
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
+import type { ReactNode } from 'react';
 import type { ItemDef, MonsterInstance } from '../../engine/types';
-import { ELEMENTS, MOTION, SCENE, SHADOW } from '../theme';
+import { ELEMENTS, PARTICLES, SCENE, SHADOW } from '../theme';
 import { monsterEmoji, monsterImage, itemEmoji } from '../art';
 import { abilityText, triggerLabel } from '../abilityText';
-import { Pedestal, SLOT_W } from './Pedestal';
+import { phaseFor } from '../idle';
+import { ContactShadow, FloorSpot, ShopCrate, SLOT_W } from './Pedestal';
 import type { DragData } from './dnd';
 
-const SLOT_H = 168;
+const SLOT_H = 150;
+const PET = 104; // base creature size — the focal point
 
-// ---- the pure standing-pet visual (also used in the drag overlay) ----------
+// ---- layered idle: bob + breathe + occasional wiggle, phase-offset ---------
 
-export function PetFigure({
-  monster,
-  size = 80,
-  facing = 'right',
-  interactive = true,
-  lifted = false,
-}: {
-  monster: MonsterInstance;
-  size?: number;
-  facing?: 'left' | 'right';
-  interactive?: boolean;
-  lifted?: boolean;
-}) {
-  const el = ELEMENTS[monster.type];
-  const img = monsterImage(monster.speciesId);
-  const flip = facing === 'left' ? 'scaleX(-1)' : undefined;
-
+function IdleCreature({ phase, facing, children }: { phase: number; facing: 'left' | 'right'; children: ReactNode }) {
+  const flip = facing === 'left' ? -1 : 1;
   return (
-    <div className="group relative flex w-[132px] flex-col items-center">
-      {interactive && <Popover monster={monster} />}
-
-      {/* level pips */}
-      {monster.level > 1 && (
-        <div className="absolute -top-1 left-1/2 z-10 flex -translate-x-1/2 gap-0.5">
-          {Array.from({ length: monster.level - 1 }).map((_, i) => (
-            <span key={i} className="text-[12px] leading-none">⭐</span>
-          ))}
-        </div>
-      )}
-
-      {/* the creature */}
+    <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: phase * 2.6 }}>
       <motion.div
-        style={{ filter: lifted ? SHADOW.creatureLift : SHADOW.creature }}
-        className="flex items-end justify-center"
+        style={{ transformOrigin: 'bottom center' }}
+        animate={{ scaleY: [1, 0.965, 1], scaleX: [1, 1.03, 1] }}
+        transition={{ duration: 2.0, repeat: Infinity, ease: 'easeInOut', delay: phase * 2 }}
       >
-        {img ? (
-          <img src={img} alt={monster.name} width={size} height={size} style={{ transform: flip, objectFit: 'contain' }} draggable={false} />
-        ) : (
-          <span style={{ fontSize: size, transform: flip, display: 'inline-block', lineHeight: 1 }}>
-            {monsterEmoji(monster.speciesId)}
-          </span>
-        )}
+        <motion.div
+          style={{ transformOrigin: 'bottom center' }}
+          animate={{ rotate: [0, 0, 3, -2, 0] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: phase * 5.5, times: [0, 0.55, 0.7, 0.85, 1] }}
+        >
+          <div style={{ transform: `scaleX(${flip})`, filter: SHADOW.creature, lineHeight: 1 }}>{children}</div>
+        </motion.div>
       </motion.div>
+    </motion.div>
+  );
+}
 
-      {/* floating ATK / HP coins + shield */}
-      <div className="z-10 -mt-2 flex items-center gap-1.5">
-        <Coin value={monster.atk} bg="#f2a93c" ring="#a96a13" icon="⚔" />
-        {monster.shield > 0 && <Coin value={monster.shield} bg="#7cc6f2" ring="#2b7fb0" icon="🛡" />}
-        <Coin value={monster.hp} bg="#ff5d6c" ring="#b32f3c" icon="♥" />
-      </div>
-
-      {/* subtle element tint glow under the pet */}
-      <div
-        className="pointer-events-none absolute -z-10"
-        style={{ bottom: 18, width: 90, height: 22, borderRadius: '50%', background: el.glow, filter: 'blur(8px)', opacity: 0.5 }}
-      />
+function ElementParticles({ type, size }: { type: MonsterInstance['type']; size: number }) {
+  const p = PARTICLES[type];
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0">
+      {Array.from({ length: p.count }).map((_, i) => {
+        const xoff = (i - (p.count - 1) / 2) * 14;
+        const dur = 2.4 + (i % 3) * 0.6;
+        return (
+          <motion.span
+            key={i}
+            className="absolute left-1/2"
+            style={{ bottom: size * 0.3, color: p.color, fontSize: p.char.length > 1 ? 12 : 8, textShadow: `0 0 6px ${p.color}` }}
+            initial={{ opacity: 0 }}
+            animate={
+              p.rise
+                ? { x: [xoff, xoff + (i % 2 ? 8 : -8)], y: [0, -size * 0.7], opacity: [0, 0.9, 0], scale: [0.5, 1, 0.4] }
+                : { x: [xoff, xoff + (i % 2 ? 18 : -18)], y: [-size * 0.2, size * 0.18], opacity: [0, 0.85, 0], rotate: [0, i % 2 ? 60 : -60] }
+            }
+            transition={{ duration: dur, repeat: Infinity, ease: p.rise ? 'easeOut' : 'easeInOut', delay: i * 0.5 }}
+          >
+            {p.char}
+          </motion.span>
+        );
+      })}
     </div>
   );
 }
 
-function Coin({ value, bg, ring, icon }: { value: number; bg: string; ring: string; icon: string }) {
+function Badge({ bg, ring, children }: { bg: string; ring: string; children: ReactNode }) {
   return (
     <div
-      className="flex h-7 min-w-[28px] items-center justify-center gap-0.5 rounded-full px-1 text-[13px] font-black text-white"
-      style={{ background: bg, boxShadow: `0 0 0 2px ${ring}, 0 2px 3px rgba(0,0,0,0.35)` }}
+      className="flex h-[22px] min-w-[22px] items-center justify-center gap-px rounded-full px-1 text-[12px] font-bold text-white"
+      style={{ background: bg, boxShadow: `0 0 0 1.5px ${ring}, 0 1.5px 2px rgba(0,0,0,0.35)` }}
     >
-      <span style={{ fontSize: 9 }}>{icon}</span>
-      {value}
+      {children}
+    </div>
+  );
+}
+
+function FootBadges({ monster }: { monster: MonsterInstance }) {
+  const el = ELEMENTS[monster.type];
+  return (
+    <div className="flex items-center gap-1">
+      <Badge bg={el.main} ring={el.dark}>
+        <span style={{ fontSize: 10 }}>{el.emoji}</span>
+      </Badge>
+      <Badge bg="#f2a93c" ring="#a96a13">
+        <span style={{ fontSize: 8 }}>⚔</span>
+        {monster.atk}
+      </Badge>
+      {monster.shield > 0 && (
+        <Badge bg="#7cc6f2" ring="#2b7fb0">
+          <span style={{ fontSize: 8 }}>🛡</span>
+          {monster.shield}
+        </Badge>
+      )}
+      <Badge bg="#ff5d6c" ring="#b32f3c">
+        <span style={{ fontSize: 8 }}>♥</span>
+        {monster.hp}
+      </Badge>
     </div>
   );
 }
@@ -93,10 +110,10 @@ function Coin({ value, bg, ring, icon }: { value: number; bg: string; ring: stri
 function Popover({ monster }: { monster: MonsterInstance }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-[128px] left-1/2 z-30 w-44 -translate-x-1/2 rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
+      className="pointer-events-none absolute -top-1 left-1/2 z-30 w-44 -translate-x-1/2 -translate-y-full rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
       style={{ background: SCENE.parchment, color: '#4a3a22', border: `2px solid ${SCENE.parchmentEdge}` }}
     >
-      <div className="font-extrabold">
+      <div className="font-bold">
         {monster.name}
         {monster.level > 1 && <span className="ml-1 opacity-70">Lv {monster.level}</span>}
       </div>
@@ -108,37 +125,92 @@ function Popover({ monster }: { monster: MonsterInstance }) {
       ) : (
         <div className="mt-0.5 opacity-60">No ability</div>
       )}
-      {/* little tail */}
       <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45" style={{ background: SCENE.parchment, borderRight: `2px solid ${SCENE.parchmentEdge}`, borderBottom: `2px solid ${SCENE.parchmentEdge}` }} />
     </div>
   );
 }
 
-// ---- a slot frame: the pedestal + whatever stands on it --------------------
+// ---- the full standing creature (used everywhere, incl. drag overlay) ------
 
-function SlotFrame({ children }: { children: React.ReactNode }) {
+export function PetFigure({
+  monster,
+  size = PET,
+  facing = 'right',
+  interactive = true,
+  lifted = false,
+}: {
+  monster: MonsterInstance;
+  size?: number;
+  facing?: 'left' | 'right';
+  interactive?: boolean;
+  lifted?: boolean;
+}) {
+  const phase = phaseFor(monster.instanceId);
+  const img = monsterImage(monster.speciesId);
+  const creature = img ? (
+    <img src={img} alt={monster.name} width={size} height={size} style={{ objectFit: 'contain' }} draggable={false} />
+  ) : (
+    <span style={{ fontSize: size, lineHeight: 1 }}>{monsterEmoji(monster.speciesId)}</span>
+  );
+
   return (
-    <div className="relative flex items-end justify-center" style={{ width: SLOT_W, height: SLOT_H }}>
-      {children}
+    <div className="group relative" style={{ width: SLOT_W, height: size + 40 }}>
+      {interactive && <Popover monster={monster} />}
+      <ElementParticles type={monster.type} size={size} />
+
+      {/* level pips, anchored just above the creature */}
+      {monster.level > 1 && (
+        <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 gap-0.5">
+          {Array.from({ length: monster.level - 1 }).map((_, i) => (
+            <span key={i} className="text-[12px] leading-none">⭐</span>
+          ))}
+        </div>
+      )}
+
+      {/* the creature */}
+      <div className="absolute inset-x-0 z-10 flex justify-center" style={{ bottom: 26 }}>
+        <div style={{ filter: lifted ? SHADOW.creatureLift : undefined }}>
+          <IdleCreature phase={phase} facing={facing}>{creature}</IdleCreature>
+        </div>
+      </div>
+
+      {/* contact shadow at the feet */}
+      <div className="absolute inset-x-0 z-0 flex justify-center" style={{ bottom: 20 }}>
+        <ContactShadow phase={phase} w={size * 0.7} />
+      </div>
+
+      {/* floating stat badges at the feet */}
+      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
+        <FootBadges monster={monster} />
+      </div>
     </div>
   );
 }
 
-// ---- team pet (draggable) on a droppable pedestal --------------------------
+// ---- team: creatures on the arena floor ------------------------------------
 
 export function TeamSlot({ index, monster }: { index: number; monster: MonsterInstance | null }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slot-${index}`, data: { kind: 'slot', index } });
   return (
-    <div ref={setNodeRef} data-slot={index}>
-      <SlotFrame>
-        <Pedestal highlight={isOver} dim={!monster} />
-        {monster && <TeamPet index={index} monster={monster} />}
-        {index === 0 && (
-          <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-wider text-white/70">
-            front
-          </span>
-        )}
-      </SlotFrame>
+    <div ref={setNodeRef} data-slot={index} className="relative" style={{ width: SLOT_W, height: SLOT_H }}>
+      <FloorSpot highlight={isOver} empty={!monster} />
+      {index === 0 && <FrontFlag />}
+      {monster && (
+        <div className="absolute inset-x-0 z-10" style={{ bottom: 8 }}>
+          <TeamPet index={index} monster={monster} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FrontFlag() {
+  return (
+    <div className="pointer-events-none absolute bottom-3 left-1 z-20 flex flex-col items-center">
+      <div className="rounded-sm px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: SCENE.orange, boxShadow: `0 1px 3px rgba(0,0,0,0.4)` }}>
+        ⚔ FRONT
+      </div>
+      <div style={{ width: 3, height: 16, background: SCENE.woodDark }} />
     </div>
   );
 }
@@ -151,24 +223,19 @@ function TeamPet({ index, monster }: { index: number; monster: MonsterInstance }
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className="absolute bottom-5 cursor-grab touch-none active:cursor-grabbing"
+      className="cursor-grab touch-none active:cursor-grabbing"
       style={{ opacity: isDragging ? 0.25 : 1 }}
-      initial={{ scale: 0.5, y: 20, opacity: 0 }}
-      animate={{ scale: 1, y: [0, -4, 0], opacity: isDragging ? 0.25 : 1 }}
+      initial={{ scale: 0.5, y: 16, opacity: 0 }}
+      animate={{ scale: 1, y: 0, opacity: isDragging ? 0.25 : 1 }}
       exit={{ scale: 0, opacity: 0 }}
-      transition={{
-        y: { duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: index * 0.25 },
-        scale: MOTION.pop,
-        default: { duration: MOTION.base },
-      }}
-      whileHover={{ scale: 1.08 }}
+      whileHover={{ scale: 1.05 }}
     >
       <PetFigure monster={monster} facing="right" />
     </motion.div>
   );
 }
 
-// ---- shop monster on a pedestal --------------------------------------------
+// ---- shop: creatures on a wooden crate -------------------------------------
 
 export function ShopMonsterPedestal({
   slot,
@@ -186,53 +253,42 @@ export function ShopMonsterPedestal({
   onQuickBuy: () => void;
 }) {
   const data: DragData = { kind: 'shop-monster', slot };
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `shop-monster-${slot}`,
-    data,
-    disabled: !monster || !affordable,
-  });
-
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `shop-monster-${slot}`, data, disabled: !monster || !affordable });
   return (
-    <div data-testid={`shop-monster-${slot}`}>
-      <SlotFrame>
-        <Pedestal frozen={frozen} dim={!monster} />
-        {monster && (
-          <>
-            <motion.div
-              ref={setNodeRef}
-              {...listeners}
-              {...attributes}
-              onClick={() => affordable && onQuickBuy()}
-              className="absolute bottom-5 touch-none"
-              style={{ cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.4)' }}
-              animate={{ scale: 1, y: [0, -4, 0] }}
-              transition={{ y: { duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: slot * 0.2 } }}
-              whileHover={affordable ? { scale: 1.08 } : {}}
-              whileTap={affordable ? { scale: 0.95 } : {}}
-            >
-              <PetFigure monster={monster} facing="left" />
-            </motion.div>
-            <PriceCoin cost={3} affordable={affordable} />
-            <FreezeKnob frozen={frozen} onClick={onFreeze} />
-          </>
-        )}
-      </SlotFrame>
+    <div data-testid={`shop-monster-${slot}`} className="relative" style={{ width: SLOT_W, height: SLOT_H }}>
+      <ShopCrate highlight={false} frozen={frozen} empty={!monster} />
+      {monster && (
+        <>
+          <motion.div
+            ref={setNodeRef}
+            {...listeners}
+            {...attributes}
+            onClick={() => affordable && onQuickBuy()}
+            className="absolute inset-x-0 z-10 touch-none"
+            style={{ bottom: 28, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
+            whileHover={affordable ? { scale: 1.05 } : {}}
+            whileTap={affordable ? { scale: 0.95 } : {}}
+          >
+            <PetFigure monster={monster} facing="left" />
+          </motion.div>
+          <PriceCoin cost={3} affordable={affordable} />
+          <FreezeKnob frozen={frozen} onClick={onFreeze} />
+        </>
+      )}
     </div>
   );
 }
 
-// ---- shop item on a pedestal -----------------------------------------------
-
 export function ItemFigure({ item, lifted = false }: { item: ItemDef; lifted?: boolean }) {
   return (
-    <div className="group relative flex w-[132px] flex-col items-center">
+    <div className="group relative flex flex-col items-center" style={{ width: SLOT_W }}>
       <div
-        className="pointer-events-none absolute bottom-[120px] left-1/2 z-30 w-40 -translate-x-1/2 rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
+        className="pointer-events-none absolute -top-1 left-1/2 z-30 w-40 -translate-x-1/2 -translate-y-full rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
         style={{ background: SCENE.parchment, color: '#4a3a22', border: `2px solid ${SCENE.parchmentEdge}` }}
       >
-        <div className="font-extrabold">{item.name}</div>
+        <div className="font-bold">{item.name}</div>
         <div className="mt-0.5">{item.description}</div>
-        <div className="mt-0.5 opacity-60">Drop on a pet</div>
+        <div className="mt-0.5 opacity-60">Drop on a creature</div>
       </div>
       <div style={{ fontSize: 52, filter: lifted ? SHADOW.creatureLift : SHADOW.creature }}>{itemEmoji(item.id)}</div>
     </div>
@@ -253,25 +309,19 @@ export function ShopItemPedestal({
   onFreeze: () => void;
 }) {
   const data: DragData = { kind: 'shop-item', slot };
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `shop-item-${slot}`,
-    data,
-    disabled: !item || !affordable,
-  });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `shop-item-${slot}`, data, disabled: !item || !affordable });
   return (
-    <SlotFrame>
-      <Pedestal frozen={frozen} dim={!item} />
+    <div className="relative" style={{ width: SLOT_W, height: SLOT_H }}>
+      <ShopCrate highlight={false} frozen={frozen} empty={!item} />
       {item && (
         <>
           <motion.div
             ref={setNodeRef}
             {...listeners}
             {...attributes}
-            className="absolute bottom-7 touch-none"
-            style={{ cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.4)' }}
-            animate={{ y: [0, -4, 0] }}
-            transition={{ y: { duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: slot * 0.3 } }}
-            whileHover={affordable ? { scale: 1.08 } : {}}
+            className="absolute inset-x-0 z-10 flex justify-center touch-none"
+            style={{ bottom: 34, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
+            whileHover={affordable ? { scale: 1.05 } : {}}
           >
             <ItemFigure item={item} />
           </motion.div>
@@ -279,16 +329,14 @@ export function ShopItemPedestal({
           <FreezeKnob frozen={frozen} onClick={onFreeze} />
         </>
       )}
-    </SlotFrame>
+    </div>
   );
 }
-
-// ---- shop chrome bits ------------------------------------------------------
 
 function PriceCoin({ cost, affordable }: { cost: number; affordable: boolean }) {
   return (
     <div
-      className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-full px-2 py-0.5 text-[12px] font-black"
+      className="absolute bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full px-2 py-0.5 text-[12px] font-bold"
       style={{ background: affordable ? '#ffd24a' : '#b6a468', color: '#5a3f00', boxShadow: '0 0 0 2px #b8860b, 0 2px 4px rgba(0,0,0,0.3)' }}
     >
       🪙{cost}
@@ -304,7 +352,7 @@ function FreezeKnob({ frozen, onClick }: { frozen: boolean; onClick: () => void 
         e.stopPropagation();
         onClick();
       }}
-      className="absolute right-3 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full text-sm transition-transform hover:scale-110 active:scale-90"
+      className="absolute right-2 top-1 z-30 flex h-7 w-7 items-center justify-center rounded-full text-sm transition-transform hover:scale-110 active:scale-90"
       style={{ background: frozen ? SCENE.skyHorizon : 'rgba(255,255,255,0.9)', boxShadow: '0 2px 5px rgba(0,0,0,0.35)' }}
       title={frozen ? 'Unfreeze' : 'Freeze for next turn'}
     >

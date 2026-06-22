@@ -1,5 +1,5 @@
 // ============================================================================
-// types.ts — Core type vocabulary for the ELEMENTAURI engine.
+// types.ts — Core type vocabulary for the Automons engine.
 //
 // This file is PURE: no React, no DOM, no runtime values that aren't types.
 // Everything the engine and UI agree on lives here. See DESIGN.md §3, §4, §6.
@@ -148,7 +148,7 @@ export interface BattleResult {
 // the engine's public surface is stable). DESIGN.md §1, §9, §11.
 // ----------------------------------------------------------------------------
 
-export type RunPhase = 'shop' | 'battle' | 'result' | 'won' | 'lost';
+export type RunPhase = 'title' | 'shop' | 'battle' | 'result' | 'won' | 'lost';
 
 export interface ShopState {
   monsterSlots: (MonsterDef | null)[];

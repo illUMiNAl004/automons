@@ -5,7 +5,7 @@
 
 import { motion } from 'framer-motion';
 import { useGame } from '../state/store';
-import { Background } from '../components/Background';
+import { Stage } from '../components/Stage';
 import { WoodButton } from '../components/WoodButton';
 import { MOTION } from '../theme';
 import { CONFIG } from '../../engine/config';
@@ -15,8 +15,7 @@ export function EndScreen() {
   const won = state.phase === 'won';
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      <Background />
+    <Stage>
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-7" style={{ background: 'rgba(8,10,20,0.45)' }}>
         <motion.div
           initial={{ scale: 0.4, y: 24, opacity: 0 }}
@@ -41,6 +40,6 @@ export function EndScreen() {
           <WoodButton label="New Run" icon="↺" onClick={actions.reset} />
         </motion.div>
       </div>
-    </div>
+    </Stage>
   );
 }
