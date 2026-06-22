@@ -163,7 +163,17 @@ export interface GameState {
   gold: number;
   lives: number;
   trophies: number;
-  bench: MonsterInstance[]; // the player's roster (persists across turns)
+  /**
+   * The player's team, front-to-back (index 0 = front in battle). Up to
+   * CONFIG.benchMax monsters. This single ordered row IS both the "bench" and
+   * the battle "board" — SAP-style. `null` marks an empty slot.
+   */
+  team: (MonsterInstance | null)[];
   shop: ShopState;
+  /** Live PRNG state; advances on every randomized op (roll/reroll). */
   seed: number;
+  /** Monotonic counter for unique team instance ids. */
+  nextInstanceId: number;
+  /** Outcome of the most recent battle, for the result screen (M3). */
+  lastResult: BattleWinner | null;
 }
