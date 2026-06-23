@@ -19,8 +19,8 @@ import { CONFIG } from '../../engine/config';
 import { ContactShadow, FloorSpot, ShopCrate, SLOT_W } from './Pedestal';
 import type { DragData } from './dnd';
 
-const SLOT_H = 150;
-const PET = 104; // base creature size — the focal point
+const SLOT_H = 158;
+const PET = 112; // creature display height (the focal point); sprites bottom-anchored
 
 // ---- layered idle: bob + breathe + occasional wiggle, phase-offset ---------
 
@@ -105,6 +105,31 @@ function FootBadges({ monster }: { monster: MonsterInstance }) {
         <span style={{ fontSize: 8 }}>♥</span>
         {monster.hp}
       </Badge>
+      {/* evolution progress lives WITH the stats, not floating above the creature */}
+      {canEvolve(monster) && <EvoPips copies={monster.copies} />}
+      {isEvolved(monster) && (
+        <Badge bg="#ffd24a" ring="#b8860b">
+          <span style={{ fontSize: 10 }}>👑</span>
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+/** A little pill of pips showing copies/evolveAt toward evolution. */
+function EvoPips({ copies }: { copies: number }) {
+  return (
+    <div
+      className="flex h-[22px] items-center gap-[3px] rounded-full px-1.5"
+      style={{ background: 'rgba(0,0,0,0.4)', boxShadow: '0 1.5px 2px rgba(0,0,0,0.35)' }}
+      title={`${copies}/${CONFIG.evolution.evolveAt} to evolve`}
+    >
+      {Array.from({ length: CONFIG.evolution.evolveAt }).map((_, i) => (
+        <span
+          key={i}
+          style={{ width: 5, height: 5, borderRadius: '50%', background: i < copies ? '#ffd24a' : 'rgba(255,255,255,0.5)' }}
+        />
+      ))}
     </div>
   );
 }
@@ -150,40 +175,26 @@ export function PetFigure({
 }) {
   const phase = phaseFor(monster.instanceId);
   const img = monsterImage(monster.speciesId);
+  // Full-body sprites are bottom-anchored in a contain-box so any aspect ratio
+  // stands grounded (feet on the floor), never floating or clipping.
   const creature = img ? (
-    <img src={img} alt={monster.name} width={size} height={size} style={{ objectFit: 'contain' }} draggable={false} />
+    <img
+      src={img}
+      alt={monster.name}
+      style={{ width: SLOT_W - 6, height: size, objectFit: 'contain', objectPosition: 'center bottom' }}
+      draggable={false}
+    />
   ) : (
-    <span style={{ fontSize: size, lineHeight: 1 }}>{monsterEmoji(monster.speciesId)}</span>
+    <span style={{ fontSize: size * 0.92, lineHeight: 1 }}>{monsterEmoji(monster.speciesId)}</span>
   );
 
   return (
-    <div className="group relative" style={{ width: SLOT_W, height: size + 40 }}>
+    <div className="group relative" style={{ width: SLOT_W, height: size + 18 }}>
       {interactive && <Popover monster={monster} />}
       <ElementParticles type={monster.type} size={size} />
 
-      {/* evolution progress pips (base forms) / evolved crown */}
-      {canEvolve(monster) && (
-        <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 gap-1">
-          {Array.from({ length: CONFIG.evolution.evolveAt }).map((_, i) => (
-            <span
-              key={i}
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: i < monster.copies ? '#ffd24a' : 'rgba(255,255,255,0.45)',
-                boxShadow: '0 0 0 1.5px rgba(0,0,0,0.35)',
-              }}
-            />
-          ))}
-        </div>
-      )}
-      {isEvolved(monster) && (
-        <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[15px]" title="Evolved">👑</div>
-      )}
-
-      {/* the creature — keyed by species so it POPS when it evolves */}
-      <div className="absolute inset-x-0 z-10 flex justify-center" style={{ bottom: 26 }}>
+      {/* the creature — bottom-anchored, keyed by species so it POPS when it evolves */}
+      <div className="absolute inset-x-0 z-10 flex justify-center" style={{ bottom: 10 }}>
         <motion.div
           key={monster.speciesId}
           initial={{ scale: 0.55 }}
@@ -196,12 +207,12 @@ export function PetFigure({
       </div>
 
       {/* contact shadow at the feet */}
-      <div className="absolute inset-x-0 z-0 flex justify-center" style={{ bottom: 20 }}>
-        <ContactShadow phase={phase} w={size * 0.7} />
+      <div className="absolute inset-x-0 z-0 flex justify-center" style={{ bottom: 6 }}>
+        <ContactShadow phase={phase} w={size * 0.62} />
       </div>
 
-      {/* floating stat badges at the feet */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
+      {/* all the creature's info in one place, at its feet */}
+      <div className="absolute inset-x-0 z-20 flex justify-center" style={{ bottom: -6 }}>
         <FootBadges monster={monster} />
       </div>
     </div>
@@ -286,7 +297,7 @@ export function ShopMonsterPedestal({
             {...attributes}
             onClick={() => affordable && onQuickBuy()}
             className="absolute inset-x-0 z-10 touch-none"
-            style={{ bottom: 28, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
+            style={{ bottom: 22, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
             whileHover={affordable ? { scale: 1.05 } : {}}
             whileTap={affordable ? { scale: 0.95 } : {}}
           >
@@ -341,7 +352,7 @@ export function ShopItemPedestal({
             {...listeners}
             {...attributes}
             className="absolute inset-x-0 z-10 flex justify-center touch-none"
-            style={{ bottom: 34, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
+            style={{ bottom: 30, cursor: affordable ? 'grab' : 'not-allowed', opacity: isDragging ? 0.25 : 1, filter: affordable ? undefined : 'grayscale(0.45)' }}
             whileHover={affordable ? { scale: 1.05 } : {}}
           >
             <ItemFigure item={item} />

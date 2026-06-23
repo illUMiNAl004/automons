@@ -127,10 +127,10 @@ function demoState(base: GameState): GameState {
     gold: 7,
     trophies: 2,
     team: [
-      mk('cinderpup', 0, { copies: 2 }), // 2/3 evolution progress (pips)
-      mk('cinderhound', 1), // already evolved form
-      mk('dewdrop', 2, { startShield: 2 }), // carries a Shell shield
-      mk('sprout', 3, { bonusAtk: 2 }), // Raw Meat buff
+      mk('cinderpup', 0, { copies: 2 }), // real art, 2/3 evolution progress
+      mk('emberling', 1), // real art
+      mk('magmaw', 2, { startShield: 2 }), // real art + a Shell shield
+      mk('cinderhound', 3), // evolved form (still emoji until art lands)
       mk('cinderpup', 4), // a duplicate — drag onto slot 0 to evolve
     ],
   };
