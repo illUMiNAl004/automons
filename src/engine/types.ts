@@ -74,6 +74,10 @@ export interface MonsterDef {
   atk: number;
   hp: number;
   ability: Ability | null;
+  /** Evolved species id this base form combines INTO (3 copies). Undefined = terminal. */
+  evolvesTo?: string;
+  /** True on evolved entries — these never appear in the shop. */
+  evolved?: boolean;
 }
 
 /** Unique id for a specific monster *instance* on the board (not the species). */
@@ -85,7 +89,9 @@ export interface MonsterInstance {
   speciesId: string; // which MonsterDef this came from
   name: string;
   type: ElementType;
-  level: number; // 1–3; scales stats & ability numbers (DESIGN.md §9)
+  /** Evolution progress: how many copies are stacked here (1..evolveAt). At
+   *  evolveAt the creature transforms into its evolved species (DESIGN.md §9). */
+  copies: number;
   atk: number; // current ATK (after buffs)
   hp: number; // current HP
   maxHp: number; // current max HP (buffs raise this too)

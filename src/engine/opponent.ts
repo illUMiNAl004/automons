@@ -10,7 +10,7 @@
 
 import type { ItemDef, MonsterDef, Team } from './types';
 import { CONFIG, maxTierForTurn } from './config';
-import { MONSTERS } from './data/monsters';
+import { BASE_MONSTERS } from './data/monsters';
 import { ITEMS } from './data/items';
 import { makeRng } from './rng';
 import { buildTeam, type InstanceOptions } from './battle';
@@ -22,7 +22,7 @@ export function generateOpponent(turn: number, seed: number): Team {
   const rng = makeRng((seed ^ (turn * 0x9e3779b1)) >>> 0);
 
   const maxTier = maxTierForTurn(turn);
-  const pool = MONSTERS.filter((m) => m.tier <= maxTier);
+  const pool = BASE_MONSTERS.filter((m) => m.tier <= maxTier);
 
   let budget = CONFIG.opponent.baseBudget + turn * CONFIG.opponent.budgetPerTurn;
   const entries: Entry[] = [];

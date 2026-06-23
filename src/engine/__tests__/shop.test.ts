@@ -98,15 +98,42 @@ describe('buying & selling', () => {
   });
 });
 
-describe('merging & arranging', () => {
-  it('merges same-species into a higher level with +1/+1 per level', () => {
-    const s = withTeam(['emberling', 'emberling']); // both 2/1, lvl1
+describe('combining, evolving & arranging (DESIGN.md §9)', () => {
+  it('combining one duplicate fills the counter to 2/3 (no evolve yet) and bumps stats', () => {
+    const s = withTeam(['emberling', 'emberling']); // both 2/1
     const base = s.team[0]!;
     const merged = moveMonster(s, 1, 0);
-    expect(merged.team[0]!.level).toBe(2);
-    expect(merged.team[0]!.atk).toBe(base.atk + CONFIG.level.atkPerLevel);
-    expect(merged.team[0]!.maxHp).toBe(base.maxHp + CONFIG.level.hpPerLevel);
+    expect(merged.team[0]!.speciesId).toBe('emberling'); // not evolved yet
+    expect(merged.team[0]!.copies).toBe(2);
+    expect(merged.team[0]!.atk).toBe(base.atk + CONFIG.evolution.mergeBonus.atk);
+    expect(merged.team[0]!.maxHp).toBe(base.maxHp + CONFIG.evolution.mergeBonus.hp);
     expect(merged.team[1]).toBeNull();
+  });
+
+  it('the 3rd identical copy EVOLVES the creature in place (same instanceId, evolved species)', () => {
+    const s = withTeam(['cinderpup', 'cinderpup', 'cinderpup']);
+    const id = s.team[0]!.instanceId;
+    const once = moveMonster(s, 1, 0); // 2/3
+    expect(once.team[0]!.speciesId).toBe('cinderpup');
+    expect(once.team[0]!.copies).toBe(2);
+    const evolved = moveMonster(once, 2, 0); // 3rd copy → evolve
+    expect(evolved.team[0]!.speciesId).toBe('cinderhound'); // cinderpup.evolvesTo
+    expect(evolved.team[0]!.instanceId).toBe(id); // transforms IN PLACE
+    expect(getMonsterDef(evolved.team[0]!.speciesId).evolved).toBe(true);
+    // inherits the higher stat line + evolve bonus (>= evolved base stats)
+    const ev = getMonsterDef('cinderhound');
+    expect(evolved.team[0]!.atk).toBeGreaterThanOrEqual(ev.atk);
+    expect(evolved.team[0]!.maxHp).toBeGreaterThanOrEqual(ev.hp);
+  });
+
+  it('evolving keeps carried items (a Shell shield survives the transform)', () => {
+    const base = createRun(SEED);
+    const team = base.team.slice();
+    team[0] = makeInstance(getMonsterDef('cinderpup'), 't1', { startShield: 2, copies: 2 });
+    team[1] = makeInstance(getMonsterDef('cinderpup'), 't2');
+    const evolved = moveMonster({ ...base, team }, 1, 0);
+    expect(evolved.team[0]!.speciesId).toBe('cinderhound');
+    expect(evolved.team[0]!.shield).toBe(2);
   });
 
   it('swaps two different species when moved onto each other', () => {
@@ -156,6 +183,17 @@ describe('turn flow', () => {
     expect(s.turn).toBe(6);
     for (const m of s.shop.monsterSlots) {
       expect(m!.tier).toBeLessThanOrEqual(maxTierForTurn(s.turn));
+    }
+  });
+
+  it('the shop only ever offers BASE forms (evolved come only from combining)', () => {
+    let s = createRun(SEED);
+    for (let t = 0; t < 8; t++) {
+      for (const m of s.shop.monsterSlots) {
+        expect(m!.evolved).toBeFalsy();
+        expect(m!.evolvesTo).toBeDefined();
+      }
+      s = nextTurn(s);
     }
   });
 });

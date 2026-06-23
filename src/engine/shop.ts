@@ -14,7 +14,7 @@ import type {
   ShopState,
 } from './types';
 import { CONFIG, maxTierForTurn } from './config';
-import { MONSTERS } from './data/monsters';
+import { BASE_MONSTERS, getMonsterDef } from './data/monsters';
 import { ITEMS } from './data/items';
 import { makeInstance } from './battle';
 import { makeRng, type RNG } from './rng';
@@ -53,7 +53,8 @@ const emptyTeam = (): (MonsterInstance | null)[] => Array(CONFIG.benchMax).fill(
  */
 function rollShopState(turn: number, prev: ShopState | undefined, rng: RNG): ShopState {
   const maxTier = maxTierForTurn(turn);
-  const pool = MONSTERS.filter((m) => m.tier <= maxTier);
+  // Only BASE forms are sold — evolved forms come purely from combining.
+  const pool = BASE_MONSTERS.filter((m) => m.tier <= maxTier);
 
   const monsterSlots: ShopState['monsterSlots'] = [];
   const frozenMonsters: boolean[] = [];
@@ -111,8 +112,9 @@ export function toggleFreezeItem(state: GameState, slot: number): GameState {
 
 /**
  * Buy the monster in shop slot `slot`. If `targetIndex` is given and holds the
- * SAME species, it merges (level up); if it's empty it lands there; otherwise
- * we fall back to the first empty team slot. No-op if unaffordable or no room.
+ * SAME species, it combines (fills the evolution counter / evolves on the 3rd);
+ * if it's empty it lands there; otherwise we fall back to the first empty team
+ * slot. No-op if unaffordable or no room.
  */
 export function buyMonster(state: GameState, slot: number, targetIndex?: number): GameState {
   const def = state.shop.monsterSlots[slot];
@@ -127,7 +129,7 @@ export function buyMonster(state: GameState, slot: number, targetIndex?: number)
   const occupant = team[idx];
   if (occupant) {
     if (occupant.speciesId === def.id) {
-      team[idx] = levelUp(occupant, 1); // buy-to-merge
+      team[idx] = combine(occupant, makeInstance(def, '_buy')); // buy-to-combine
     } else {
       // dropped onto a different species: try first empty instead
       idx = firstEmpty(team);
@@ -174,7 +176,8 @@ export function sellMonster(state: GameState, index: number): GameState {
 
 /**
  * Move the monster at `from` to slot `to`. Empty target → move; same species →
- * merge; different species → swap. This single op covers reorder AND merge.
+ * combine (evolution counter); different species → swap. One op covers reorder
+ * AND combine/evolve.
  */
 export function moveMonster(state: GameState, from: number, to: number): GameState {
   if (from === to) return state;
@@ -187,7 +190,7 @@ export function moveMonster(state: GameState, from: number, to: number): GameSta
     team[to] = a;
     team[from] = null;
   } else if (b.speciesId === a.speciesId) {
-    team[to] = levelUp(b, a.level); // merge a into b
+    team[to] = combine(b, a); // combine a into b
     team[from] = null;
   } else {
     team[from] = b; // swap
@@ -227,22 +230,60 @@ export function getTeam(state: GameState): MonsterInstance[] {
 export const teamCount = (state: GameState): number => getTeam(state).length;
 export const teamIsFull = (state: GameState): boolean => firstEmpty(state.team) < 0;
 
+/** Whether `m` is a base form that can still evolve (used by the UI for pips). */
+export function canEvolve(m: MonsterInstance): boolean {
+  return getMonsterDef(m.speciesId).evolvesTo !== undefined;
+}
+
+/** Whether `m` is already an evolved form. */
+export function isEvolved(m: MonsterInstance): boolean {
+  return getMonsterDef(m.speciesId).evolved === true;
+}
+
 // ----------------------------------------------------------------------------
-// Internals
+// Internals — combine & evolve
 // ----------------------------------------------------------------------------
 
 const firstEmpty = (team: (MonsterInstance | null)[]): number => team.findIndex((s) => s === null);
 
-/** Level a monster up by `addLevels`, capped, applying per-level stat bonus. */
-function levelUp(target: MonsterInstance, addLevels: number): MonsterInstance {
-  const newLevel = Math.min(CONFIG.level.maxLevel, target.level + addLevels);
-  const gained = newLevel - target.level;
-  return {
+/**
+ * Combine `source` into `target`: fill the evolution counter and take the
+ * higher of each stat line (+ a small bonus) so a buffed duplicate is never
+ * wasted. On reaching `evolveAt` copies, the base transforms into its evolved
+ * form IN PLACE (same instanceId). Items (baked-in stats + shield) carry over.
+ */
+function combine(target: MonsterInstance, source: MonsterInstance): MonsterInstance {
+  const def = getMonsterDef(target.speciesId);
+  const copies = target.copies + source.copies;
+  const merged: MonsterInstance = {
     ...target,
-    level: newLevel,
-    atk: target.atk + gained * CONFIG.level.atkPerLevel,
-    maxHp: target.maxHp + gained * CONFIG.level.hpPerLevel,
-    hp: target.hp + gained * CONFIG.level.hpPerLevel,
+    copies,
+    atk: Math.max(target.atk, source.atk) + CONFIG.evolution.mergeBonus.atk,
+    maxHp: Math.max(target.maxHp, source.maxHp) + CONFIG.evolution.mergeBonus.hp,
+    hp: Math.max(target.maxHp, source.maxHp) + CONFIG.evolution.mergeBonus.hp,
+    shield: Math.max(target.shield, source.shield),
+  };
+  if (def.evolvesTo && copies >= CONFIG.evolution.evolveAt) {
+    return evolve(merged, def.evolvesTo);
+  }
+  return merged;
+}
+
+/** Transform an instance into its evolved species, inheriting the higher stats. */
+function evolve(inst: MonsterInstance, evolvedId: string): MonsterInstance {
+  const ev = getMonsterDef(evolvedId);
+  const atk = Math.max(inst.atk, ev.atk) + CONFIG.evolution.evolveBonus.atk;
+  const hp = Math.max(inst.maxHp, ev.hp) + CONFIG.evolution.evolveBonus.hp;
+  return {
+    ...inst, // keeps instanceId + shield (carried items)
+    speciesId: ev.id,
+    name: ev.name,
+    type: ev.type,
+    ability: ev.ability,
+    atk,
+    maxHp: hp,
+    hp,
+    copies: 1, // evolved is terminal
   };
 }
 

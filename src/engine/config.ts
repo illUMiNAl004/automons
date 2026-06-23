@@ -32,14 +32,13 @@ export const CONFIG = {
   /** Direct attacks (and typed ability damage) never deal less than this. */
   minDamage: 1,
 
-  // --- Leveling / merging (DESIGN.md §9) ---
-  level: {
-    maxLevel: 3,
-    atkPerLevel: 1, // +1 ATK per level above 1
-    hpPerLevel: 1, // +1 HP per level above 1
-    // Ability numbers scale with level: L1 ×1, L2 ×2, L3 ×3.
-    abilityMultiplier: { 1: 1, 2: 2, 3: 3 } as Record<number, number>,
-    copiesForLevel: { 2: 2, 3: 3 } as Record<number, number>,
+  // --- Evolution / combining (DESIGN.md §9) ---
+  // Combining duplicates fills an evolution counter; on the Nth copy the base
+  // form transforms into its evolved species (no numeric levels).
+  evolution: {
+    evolveAt: 3, // copies (incl. the original) needed to evolve
+    mergeBonus: { atk: 1, hp: 1 }, // each combine bumps the surviving creature
+    evolveBonus: { atk: 1, hp: 1 }, // small bonus on top of the higher stat line
   },
 
   // --- Opponent generation (DESIGN.md §10) ---
@@ -65,18 +64,4 @@ export function maxTierForTurn(turn: number): Tier {
   if (turn <= 2) return 1;
   if (turn <= 4) return 2;
   return 3;
-}
-
-/** Stat bonus a monster gains purely from its level (applied on top of base). */
-export function levelStatBonus(level: number): { atk: number; hp: number } {
-  const extra = Math.max(0, level - 1);
-  return {
-    atk: extra * CONFIG.level.atkPerLevel,
-    hp: extra * CONFIG.level.hpPerLevel,
-  };
-}
-
-/** Multiplier applied to an ability's numeric amounts at a given level. */
-export function abilityMultiplier(level: number): number {
-  return CONFIG.level.abilityMultiplier[level] ?? 1;
 }

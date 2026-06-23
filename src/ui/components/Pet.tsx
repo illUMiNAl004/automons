@@ -10,10 +10,12 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import type { ItemDef, MonsterInstance } from '../../engine/types';
-import { ELEMENTS, PARTICLES, SCENE, SHADOW } from '../theme';
+import { ELEMENTS, MOTION, PARTICLES, SCENE, SHADOW } from '../theme';
 import { monsterEmoji, monsterImage, itemEmoji } from '../art';
 import { abilityText, triggerLabel } from '../abilityText';
 import { phaseFor } from '../idle';
+import { canEvolve, isEvolved } from '../../engine/shop';
+import { CONFIG } from '../../engine/config';
 import { ContactShadow, FloorSpot, ShopCrate, SLOT_W } from './Pedestal';
 import type { DragData } from './dnd';
 
@@ -115,7 +117,8 @@ function Popover({ monster }: { monster: MonsterInstance }) {
     >
       <div className="font-bold">
         {monster.name}
-        {monster.level > 1 && <span className="ml-1 opacity-70">Lv {monster.level}</span>}
+        {isEvolved(monster) && <span className="ml-1 opacity-70">★ Evolved</span>}
+        {canEvolve(monster) && <span className="ml-1 opacity-70">{monster.copies}/{CONFIG.evolution.evolveAt}</span>}
       </div>
       {monster.ability ? (
         <div className="mt-0.5">
@@ -158,20 +161,38 @@ export function PetFigure({
       {interactive && <Popover monster={monster} />}
       <ElementParticles type={monster.type} size={size} />
 
-      {/* level pips, anchored just above the creature */}
-      {monster.level > 1 && (
-        <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 gap-0.5">
-          {Array.from({ length: monster.level - 1 }).map((_, i) => (
-            <span key={i} className="text-[12px] leading-none">⭐</span>
+      {/* evolution progress pips (base forms) / evolved crown */}
+      {canEvolve(monster) && (
+        <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 gap-1">
+          {Array.from({ length: CONFIG.evolution.evolveAt }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: i < monster.copies ? '#ffd24a' : 'rgba(255,255,255,0.45)',
+                boxShadow: '0 0 0 1.5px rgba(0,0,0,0.35)',
+              }}
+            />
           ))}
         </div>
       )}
+      {isEvolved(monster) && (
+        <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[15px]" title="Evolved">👑</div>
+      )}
 
-      {/* the creature */}
+      {/* the creature — keyed by species so it POPS when it evolves */}
       <div className="absolute inset-x-0 z-10 flex justify-center" style={{ bottom: 26 }}>
-        <div style={{ filter: lifted ? SHADOW.creatureLift : undefined }}>
+        <motion.div
+          key={monster.speciesId}
+          initial={{ scale: 0.55 }}
+          animate={{ scale: 1 }}
+          transition={MOTION.pop}
+          style={{ filter: lifted ? SHADOW.creatureLift : undefined }}
+        >
           <IdleCreature phase={phase} facing={facing}>{creature}</IdleCreature>
-        </div>
+        </motion.div>
       </div>
 
       {/* contact shadow at the feet */}

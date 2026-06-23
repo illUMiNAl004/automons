@@ -1,9 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-14 -10 148 158">
   <defs>
-    <linearGradient id="tile" x1="0.18" y1="0" x2="0.82" y2="1">
-      <stop offset="0" stop-color="#26314c"></stop>
-      <stop offset="1" stop-color="#0b0f1d"></stop>
-    </linearGradient>
     <linearGradient id="amFire" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="60" y2="60">
       <stop offset="0" stop-color="#FFC668"></stop><stop offset="1" stop-color="#E12E1C"></stop>
     </linearGradient>
@@ -22,13 +18,11 @@
     <radialGradient id="amSpark" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"></stop><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
     </radialGradient>
-    <filter id="gemShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.45"></feDropShadow>
+    <filter id="gemShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.4"></feDropShadow>
     </filter>
   </defs>
-  <rect x="0" y="0" width="512" height="512" rx="114" ry="114" fill="url(#tile)"></rect>
-  <rect x="3" y="3" width="506" height="506" rx="111" ry="111" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2"></rect>
-  <g transform="translate(106 108) scale(2.5)" filter="url(#gemShadow)">
+  <g filter="url(#gemShadow)">
     <polygon points="60,8 8,60 60,60" fill="url(#amFire)"></polygon>
     <polygon points="60,8 112,60 60,60" fill="url(#amWater)"></polygon>
     <polygon points="112,60 60,112 60,60" fill="url(#amEarth)"></polygon>

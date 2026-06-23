@@ -10,7 +10,7 @@ import { MOTION, SURFACE } from '../theme';
 
 export interface Fx {
   id: number;
-  kind: 'coins' | 'merge' | 'poof';
+  kind: 'coins' | 'merge' | 'poof' | 'evolve';
   x: number; // screen-space origin
   y: number;
 }
@@ -106,6 +106,48 @@ function Poof({ at, onDone }: { at: { x: number; y: number }; onDone: () => void
   );
 }
 
+/** A bright transformation burst when a creature evolves. */
+function Evolve({ at, onDone }: { at: { x: number; y: number }; onDone: () => void }) {
+  const sparks = Array.from({ length: 12 });
+  return (
+    <div className="absolute" style={{ left: at.x, top: at.y }}>
+      {/* bloom flash */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ width: 170, height: 170, marginLeft: -85, marginTop: -85, background: 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(255,210,74,0.45) 42%, rgba(255,210,74,0) 70%)' }}
+        initial={{ scale: 0.2, opacity: 1 }}
+        animate={{ scale: 1.7, opacity: 0 }}
+        transition={{ duration: 0.55, ease: MOTION.ease }}
+        onAnimationComplete={onDone}
+      />
+      {/* gold ring */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{ width: 120, height: 120, marginLeft: -60, marginTop: -60, border: `4px solid ${SURFACE.gold}` }}
+        initial={{ scale: 0.3, opacity: 0.95 }}
+        animate={{ scale: 1.8, opacity: 0 }}
+        transition={{ duration: 0.5, ease: MOTION.ease }}
+      />
+      {/* radial sparks */}
+      {sparks.map((_, i) => {
+        const a = (i / sparks.length) * Math.PI * 2;
+        return (
+          <motion.span
+            key={i}
+            className="absolute text-base"
+            style={{ marginLeft: -6, marginTop: -8, color: '#fff7c4', textShadow: '0 0 6px #ffd24a' }}
+            initial={{ x: 0, y: 0, opacity: 1, scale: 0.5 }}
+            animate={{ x: Math.cos(a) * 72, y: Math.sin(a) * 72, opacity: 0, scale: 1 }}
+            transition={{ duration: 0.5, ease: MOTION.ease }}
+          >
+            ✦
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
 export function FxOverlay({ effects, remove }: { effects: Fx[]; remove: (id: number) => void }) {
   return (
     <div className="pointer-events-none fixed inset-0 z-50">
@@ -113,6 +155,7 @@ export function FxOverlay({ effects, remove }: { effects: Fx[]; remove: (id: num
         const done = () => remove(fx.id);
         if (fx.kind === 'coins') return <CoinBurst key={fx.id} from={{ x: fx.x, y: fx.y }} onDone={done} />;
         if (fx.kind === 'poof') return <Poof key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={done} />;
+        if (fx.kind === 'evolve') return <Evolve key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={done} />;
         return <MergeFlash key={fx.id} at={{ x: fx.x, y: fx.y }} onDone={done} />;
       })}
     </div>

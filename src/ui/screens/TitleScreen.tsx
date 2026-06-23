@@ -9,9 +9,10 @@ import { useGame } from '../state/store';
 import { Stage } from '../components/Stage';
 import { PetFigure } from '../components/Pet';
 import { WoodButton } from '../components/WoodButton';
-import { ELEMENTS, TYPE, type ElementKey } from '../theme';
+import { ELEMENTS, MOTION, TYPE, type ElementKey } from '../theme';
 import { makeInstance } from '../../engine/battle';
 import { getMonsterDef } from '../../engine/data/monsters';
+import gemLogo from '../../assets/automons-gem.svg';
 
 const LETTERS: [string, ElementKey][] = [
   ['A', 'fire'], ['U', 'water'], ['T', 'nature'], ['O', 'earth'],
@@ -26,8 +27,19 @@ export function TitleScreen() {
   const { actions } = useGame();
   return (
     <Stage>
-      <div className="relative flex h-full flex-col items-center px-6 pt-[10vh]">
-        {/* logo */}
+      <div className="relative flex h-full flex-col items-center px-6 pt-[7vh]">
+        {/* gem emblem */}
+        <motion.img
+          src={gemLogo}
+          alt="Automons"
+          className="mb-3 h-24 w-24 select-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] sm:h-28 sm:w-28"
+          draggable={false}
+          initial={{ scale: 0, rotate: -90, opacity: 0 }}
+          animate={{ scale: [0, 1.15, 1], rotate: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: MOTION.ease }}
+        />
+
+        {/* wordmark */}
         <div className="flex select-none" style={{ fontSize: TYPE.title, fontWeight: 700, lineHeight: 1 }}>
           {LETTERS.map(([ch, el], i) => (
             <motion.span

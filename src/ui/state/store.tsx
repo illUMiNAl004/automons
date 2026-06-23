@@ -117,7 +117,7 @@ function initialState(): GameState {
   return { ...base, phase: 'title' }; // first load shows the title screen
 }
 
-/** Dev-only: a hand-built team showing every element, a level-2 merge, a shield. */
+/** Dev-only: a hand-built team showing evolution progress, an evolved form, a shield. */
 function demoState(base: GameState): GameState {
   const mk = (id: string, n: number, opts?: Parameters<typeof makeInstance>[2]) =>
     makeInstance(getMonsterDef(id), `demo-${n}`, opts);
@@ -127,11 +127,11 @@ function demoState(base: GameState): GameState {
     gold: 7,
     trophies: 2,
     team: [
-      mk('cinderpup', 0, { level: 2 }),
-      mk('dewdrop', 1, { startShield: 2 }),
-      mk('sprout', 2, { bonusAtk: 2 }),
-      mk('boulderpup', 3),
-      mk('magmaw', 4),
+      mk('cinderpup', 0, { copies: 2 }), // 2/3 evolution progress (pips)
+      mk('cinderhound', 1), // already evolved form
+      mk('dewdrop', 2, { startShield: 2 }), // carries a Shell shield
+      mk('sprout', 3, { bonusAtk: 2 }), // Raw Meat buff
+      mk('cinderpup', 4), // a duplicate — drag onto slot 0 to evolve
     ],
   };
 }

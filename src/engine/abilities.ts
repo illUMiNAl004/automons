@@ -21,7 +21,6 @@ import type {
   FriendTarget,
   ElementType,
 } from './types';
-import { abilityMultiplier } from './config';
 import type { RNG } from './rng';
 
 /**
@@ -91,28 +90,27 @@ function applyEffect(
   effect: Effect,
   opts: FireOpts,
 ): void {
-  const mult = abilityMultiplier(source.level);
-
+  // Ability numbers are taken straight from the data. Stronger creatures come
+  // from EVOLVED forms (their own bigger numbers) — there is no level scaling.
   switch (effect.verb) {
     case 'dealDamage': {
       const targets = resolveDamageTargets(ctx, source, side, effect.target, opts);
-      const amount = effect.amount * mult;
-      for (const t of targets) ctx.dealTypedDamage(t, amount, effect.dmgType, source.instanceId);
+      for (const t of targets) ctx.dealTypedDamage(t, effect.amount, effect.dmgType, source.instanceId);
       break;
     }
     case 'buff': {
       const targets = resolveFriendTargets(ctx, source, side, effect.target, opts);
-      for (const t of targets) ctx.applyBuff(t, effect.atk * mult, effect.hp * mult);
+      for (const t of targets) ctx.applyBuff(t, effect.atk, effect.hp);
       break;
     }
     case 'heal': {
       const targets = resolveFriendTargets(ctx, source, side, effect.target, opts);
-      for (const t of targets) ctx.applyHeal(t, effect.amount * mult);
+      for (const t of targets) ctx.applyHeal(t, effect.amount);
       break;
     }
     case 'shield': {
       const targets = resolveFriendTargets(ctx, source, side, effect.target, opts);
-      for (const t of targets) ctx.applyShield(t, effect.amount * mult);
+      for (const t of targets) ctx.applyShield(t, effect.amount);
       break;
     }
     case 'summon': {
@@ -127,7 +125,7 @@ function applyEffect(
       const count = ctx
         .friendsOf(side)
         .filter((f) => f !== source && f.type === effect.ofType).length;
-      if (count > 0) ctx.applyBuff(source, effect.atk * count * mult, effect.hp * count * mult);
+      if (count > 0) ctx.applyBuff(source, effect.atk * count, effect.hp * count);
       break;
     }
   }

@@ -24,8 +24,22 @@ export const MONSTER_EMOJI: Record<string, string> = {
   pebbling: '🪨',
   boulderpup: '🦫',
   terrapex: '🐢',
-  // Token
+  // Tokens
   sapling: '🌿',
+  bramble: '🍀',
+  // --- Evolved forms (placeholder emoji until real art is dropped) ---
+  infernling: '🐲',
+  cinderhound: '🐺',
+  magmaron: '☄️',
+  dewmonarch: '🐳',
+  tidehound: '🐬',
+  kraken: '🦑',
+  bramblebeast: '🌳',
+  thornguard: '🌵',
+  floralux: '🌻',
+  cragling: '⛰️',
+  boulderhound: '🦏',
+  terratitan: '🗿',
 };
 
 export function monsterEmoji(speciesId: string): string {

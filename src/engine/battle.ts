@@ -40,7 +40,7 @@ import type {
   Team,
   Trigger,
 } from './types';
-import { CONFIG, levelStatBonus } from './config';
+import { CONFIG } from './config';
 import { computeDamage } from './typeChart';
 import { getMonsterDef } from './data/monsters';
 import { fireAbility, type EffectContext, type FireOpts } from './abilities';
@@ -51,8 +51,9 @@ import { makeRng, type RNG } from './rng';
 // ----------------------------------------------------------------------------
 
 export interface InstanceOptions {
-  level?: number;
-  /** Permanent stat bonuses from items/merges, layered on top of base + level. */
+  /** Evolution progress (copies stacked). Defaults to 1 (a fresh single copy). */
+  copies?: number;
+  /** Permanent stat bonuses from items, layered on top of the base stats. */
   bonusAtk?: number;
   bonusHp?: number;
   /** Shield the monster starts the battle with (e.g. from the `shell` item). */
@@ -65,16 +66,14 @@ export function makeInstance(
   instanceId: InstanceId,
   opts: InstanceOptions = {},
 ): MonsterInstance {
-  const level = opts.level ?? 1;
-  const lvl = levelStatBonus(level);
-  const atk = def.atk + lvl.atk + (opts.bonusAtk ?? 0);
-  const hp = def.hp + lvl.hp + (opts.bonusHp ?? 0);
+  const atk = def.atk + (opts.bonusAtk ?? 0);
+  const hp = def.hp + (opts.bonusHp ?? 0);
   return {
     instanceId,
     speciesId: def.id,
     name: def.name,
     type: def.type,
-    level,
+    copies: opts.copies ?? 1,
     atk,
     hp,
     maxHp: hp,

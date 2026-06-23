@@ -19,6 +19,7 @@ import { useGame } from '../state/store';
 import { makeInstance } from '../../engine/battle';
 import { CONFIG } from '../../engine/config';
 import { getTeam } from '../../engine/shop';
+import { getMonsterDef } from '../../engine/data/monsters';
 import { Stage } from '../components/Stage';
 import { Hud } from '../components/Hud';
 import { Signpost } from '../components/Signpost';
@@ -26,6 +27,13 @@ import { WoodButton } from '../components/WoodButton';
 import { PetFigure, ItemFigure, TeamSlot, ShopMonsterPedestal, ShopItemPedestal } from '../components/Pet';
 import { FxOverlay, type Fx } from '../components/effects';
 import type { DragData } from '../components/dnd';
+import type { MonsterInstance } from '../../engine/types';
+
+/** Pick the right flourish for a combine: a full evolve burst vs a merge flash. */
+function combineFx(target: MonsterInstance, sourceCopies: number): Fx['kind'] {
+  const def = getMonsterDef(target.speciesId);
+  return def.evolvesTo && target.copies + sourceCopies >= CONFIG.evolution.evolveAt ? 'evolve' : 'merge';
+}
 
 export function ShopScreen() {
   const { state, actions } = useGame();
@@ -67,7 +75,7 @@ export function ShopScreen() {
       const dest = state.team[over.index];
       const isMerge = !!dest && dest.speciesId === state.shop.monsterSlots[a.slot]?.id;
       actions.buyMonster(a.slot, over.index);
-      if (isMerge) { const c = slotCenter(over.index); spawn('merge', c.x, c.y); }
+      if (isMerge && dest) { const c = slotCenter(over.index); spawn(combineFx(dest, 1), c.x, c.y); }
     } else if (a.kind === 'shop-item' && over.kind === 'slot' && over.index !== undefined) {
       const target = state.team[over.index];
       if (target) {
@@ -86,7 +94,7 @@ export function ShopScreen() {
         const dest = state.team[over.index];
         const isMerge = !!from && !!dest && from.speciesId === dest.speciesId;
         actions.move(a.index, over.index);
-        if (isMerge) { const c = slotCenter(over.index); spawn('merge', c.x, c.y); }
+        if (isMerge && from && dest) { const c = slotCenter(over.index); spawn(combineFx(dest, from.copies), c.x, c.y); }
       }
     }
   }
