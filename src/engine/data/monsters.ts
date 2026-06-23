@@ -131,13 +131,58 @@ const EVOLVED: MonsterDef[] = [
   },
 ];
 
-/** All species (base + evolved). The shop filters to base forms only. */
-export const MONSTERS: MonsterDef[] = [...BASES, ...EVOLVED];
-
-export const TOKENS: MonsterDef[] = [
+const TOKEN_DEFS: MonsterDef[] = [
   { id: 'sapling', name: 'Sapling', type: 'nature', tier: 1, atk: 1, hp: 1, ability: null },
   { id: 'bramble', name: 'Bramble', type: 'nature', tier: 1, atk: 2, hp: 3, ability: null },
 ];
+
+/**
+ * Flavor lore (subtype + grand displayName) — separate from element type, used
+ * for dramatic battle text. Placeholders from the art bible; tune freely.
+ */
+const LORE: Record<string, { subtype: string; displayName: string }> = {
+  // Fire
+  emberling: { subtype: 'Ember Wyrmling', displayName: 'Emberling' },
+  cinderpup: { subtype: 'Cinder Fox', displayName: 'Cinderpup' },
+  magmaw: { subtype: 'Magma Brute', displayName: 'Magmaw' },
+  infernling: { subtype: 'Infernal Dragon', displayName: 'Infernling' },
+  cinderhound: { subtype: 'Cinder Hound', displayName: 'Cinderhound' },
+  magmaron: { subtype: 'Obsidian Titan', displayName: 'Magmaron' },
+  // Water
+  dewdrop: { subtype: 'Dew Serpent', displayName: 'Dewdrop' },
+  tidepup: { subtype: 'Tide Guardian', displayName: 'Tidepup' },
+  krakenling: { subtype: 'Kraken Spawn', displayName: 'Krakenling' },
+  dewmonarch: { subtype: 'Sea Dragon God', displayName: 'DragoDrop' },
+  tidehound: { subtype: 'Tidal Sentinel', displayName: 'Tidehound' },
+  kraken: { subtype: 'Abyssal Kraken', displayName: 'Kraken' },
+  // Nature
+  sprout: { subtype: 'Leaf Gecko', displayName: 'Sprout' },
+  thornback: { subtype: 'Thorn Lizard', displayName: 'Thornback' },
+  bloomtail: { subtype: 'Bloom Stag', displayName: 'Bloomtail' },
+  bramblebeast: { subtype: 'Bramble Beast', displayName: 'Bramblebeast' },
+  thornguard: { subtype: 'Thorn Warden', displayName: 'Thornguard' },
+  floralux: { subtype: 'Verdant Sovereign', displayName: 'Floralux' },
+  // Earth
+  pebbling: { subtype: 'Rock Pangolin', displayName: 'Pebbling' },
+  boulderpup: { subtype: 'Stone Hound', displayName: 'Boulderpup' },
+  terrapex: { subtype: 'Mountain Tortoise', displayName: 'Terrapex' },
+  cragling: { subtype: 'Crag Pangolin', displayName: 'Cragling' },
+  boulderhound: { subtype: 'Boulder Warhound', displayName: 'Boulderhound' },
+  terratitan: { subtype: 'Mountain Colossus', displayName: 'Terratitan' },
+  // Tokens
+  sapling: { subtype: 'Seedling', displayName: 'Sapling' },
+  bramble: { subtype: 'Bramble', displayName: 'Bramble' },
+};
+
+const withLore = (d: MonsterDef): MonsterDef => ({
+  ...d,
+  ...(LORE[d.id] ?? { subtype: 'Automon', displayName: d.name }),
+});
+
+/** All species (base + evolved), with lore. The shop filters to base forms only. */
+export const MONSTERS: MonsterDef[] = [...BASES, ...EVOLVED].map(withLore);
+
+export const TOKENS: MonsterDef[] = TOKEN_DEFS.map(withLore);
 
 /** Fast lookup by species id across both the roster and the token pool. */
 const BY_ID: Record<string, MonsterDef> = Object.fromEntries(
@@ -150,5 +195,5 @@ export function getMonsterDef(id: string): MonsterDef {
   return def;
 }
 
-/** Base forms only — the shop & opponent pool draw from these. */
-export const BASE_MONSTERS: MonsterDef[] = BASES;
+/** Base forms only (with lore) — the shop & opponent pool draw from these. */
+export const BASE_MONSTERS: MonsterDef[] = MONSTERS.filter((m) => !m.evolved);

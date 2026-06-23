@@ -1,29 +1,28 @@
 // ============================================================================
-// Hud.tsx — Run status carved into the world's material: a wooden plaque (top-
-// left) with stone-inset stat chips (gold / lives / turn / trophies) and round
-// wooden menu knobs (top-right). The gold chip keeps id="hud-gold" so sold-
-// creature coins can fly to it.
+// Hud.tsx — Run status in a sleek, modern game panel (dark glass + glow
+// accents). Top-left: gold / lives / turn / trophies. Top-right: menu knobs.
+// The gold chip keeps id="hud-gold" so sold-creature coins can fly to it.
 // ============================================================================
 
 import { AnimatePresence, motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import { useGame } from '../state/store';
-import { MOTION, SCENE } from '../theme';
+import { MOTION, UI } from '../theme';
 import { CONFIG } from '../../engine/config';
-
-const woodFace = `linear-gradient(180deg, ${SCENE.wood} 0%, #9a5f29 55%, ${SCENE.woodDark} 100%)`;
-const woodKnob = `radial-gradient(circle at 35% 30%, ${SCENE.wood}, ${SCENE.woodDark})`;
 
 export function Hud() {
   const { state } = useGame();
   return (
     <div className="pointer-events-none flex items-start justify-between">
-      <Plaque>
-        <Stat id="hud-gold" icon="🪙" value={state.gold} pop />
-        <Stat icon="❤️" value={state.lives} />
-        <Stat icon="⏳" value={state.turn} />
-        <Stat icon="🏆" value={`${state.trophies}/${CONFIG.winTrophies}`} />
-      </Plaque>
+      <Panel>
+        <Stat id="hud-gold" icon="🪙" value={state.gold} glow="rgba(255,208,122,0.5)" fg={UI.gold} pop />
+        <Divider />
+        <Stat icon="❤️" value={state.lives} glow="rgba(255,107,122,0.45)" fg="#ff8088" />
+        <Divider />
+        <Stat icon="⏳" value={state.turn} glow={UI.glow} fg={UI.text} />
+        <Divider />
+        <Stat icon="🏆" value={`${state.trophies}/${CONFIG.winTrophies}`} glow="rgba(255,208,122,0.45)" fg={UI.gold} />
+      </Panel>
 
       <div className="pointer-events-auto flex items-center gap-2">
         <Knob>🐾</Knob>
@@ -33,38 +32,44 @@ export function Hud() {
   );
 }
 
-function Plaque({ children }: { children: ReactNode }) {
+function Panel({ children }: { children: ReactNode }) {
   return (
     <div
-      className="pointer-events-auto relative flex items-center gap-1.5 rounded-2xl px-2.5 py-1.5"
+      className="pointer-events-auto flex items-center gap-1 rounded-2xl px-2 py-1.5"
       style={{
-        background: woodFace,
-        border: `3px solid ${SCENE.woodDark}`,
-        boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.22), inset 0 -3px 0 rgba(0,0,0,0.28), 0 6px 14px rgba(0,0,0,0.35)',
+        background: UI.panel,
+        border: `1px solid ${UI.panelBorder}`,
+        backdropFilter: 'blur(10px)',
+        boxShadow: `inset 0 1px 0 ${UI.panelHi}, 0 10px 30px rgba(0,0,0,0.5)`,
       }}
     >
-      {/* carved corner pegs */}
-      <Peg className="left-1 top-1" />
-      <Peg className="right-1 top-1" />
-      <Peg className="bottom-1 left-1" />
-      <Peg className="bottom-1 right-1" />
       {children}
     </div>
   );
 }
 
-function Peg({ className }: { className: string }) {
-  return <span className={`absolute h-1.5 w-1.5 rounded-full ${className}`} style={{ background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.5)' }} />;
-}
+const Divider = () => <span className="h-5 w-px" style={{ background: UI.panelBorder }} />;
 
-function Stat({ icon, value, id, pop = false }: { icon: string; value: number | string; id?: string; pop?: boolean }) {
+function Stat({
+  icon,
+  value,
+  id,
+  glow,
+  fg,
+  pop = false,
+}: {
+  icon: string;
+  value: number | string;
+  id?: string;
+  glow: string;
+  fg: string;
+  pop?: boolean;
+}) {
   return (
-    <div
-      id={id}
-      className="mx-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1"
-      style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.32), rgba(0,0,0,0.18))', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.45)' }}
-    >
-      <span className="text-base leading-none">{icon}</span>
+    <div id={id} className="flex items-center gap-1.5 rounded-xl px-2.5 py-1">
+      <span className="text-[15px] leading-none" style={{ filter: `drop-shadow(0 0 5px ${glow})` }}>
+        {icon}
+      </span>
       {pop && typeof value === 'number' ? (
         <span className="relative inline-flex min-w-[1.4ch] justify-center">
           <AnimatePresence mode="popLayout" initial={false}>
@@ -74,14 +79,17 @@ function Stat({ icon, value, id, pop = false }: { icon: string; value: number | 
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: 10, opacity: 0 }}
               transition={MOTION.pop}
-              className="text-[16px] font-bold tabular-nums text-white"
+              className="text-[16px] font-semibold tabular-nums"
+              style={{ color: fg }}
             >
               {value}
             </motion.span>
           </AnimatePresence>
         </span>
       ) : (
-        <span className="text-[16px] font-bold tabular-nums text-white">{value}</span>
+        <span className="text-[16px] font-semibold tabular-nums" style={{ color: fg }}>
+          {value}
+        </span>
       )}
     </div>
   );
@@ -90,8 +98,14 @@ function Stat({ icon, value, id, pop = false }: { icon: string; value: number | 
 function Knob({ children }: { children: ReactNode }) {
   return (
     <button
-      className="flex h-10 w-10 items-center justify-center rounded-full text-lg text-white transition-transform hover:scale-105 active:scale-95"
-      style={{ background: woodKnob, border: `3px solid ${SCENE.woodDark}`, boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.25), 0 4px 8px rgba(0,0,0,0.35)' }}
+      className="flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all hover:scale-105 active:scale-95"
+      style={{
+        background: UI.panel,
+        border: `1px solid ${UI.panelBorder}`,
+        backdropFilter: 'blur(10px)',
+        boxShadow: `inset 0 1px 0 ${UI.panelHi}, 0 6px 18px rgba(0,0,0,0.45)`,
+        color: UI.text,
+      }}
     >
       {children}
     </button>

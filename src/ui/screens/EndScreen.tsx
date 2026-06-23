@@ -37,7 +37,7 @@ export function EndScreen() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <WoodButton label="New Run" icon="↺" onClick={actions.reset} />
+          <WoodButton label="New Run" icon="↺" tone="ghost" onClick={actions.reset} />
         </motion.div>
       </div>
     </Stage>

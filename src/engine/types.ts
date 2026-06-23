@@ -69,6 +69,11 @@ export interface Ability {
 export interface MonsterDef {
   id: string; // unique species id; matches art file `{id}.png`
   name: string;
+  /** Flavor "species" of the creature, separate from its element type (e.g.
+   *  "Ember Wyrmling", "Sea Dragon God"). Surfaced in battle text. */
+  subtype?: string;
+  /** Grand proper name for battle flavor (often === name; e.g. evolved Dewdrop = "DragoDrop"). */
+  displayName?: string;
   type: ElementType;
   tier: Tier;
   atk: number;

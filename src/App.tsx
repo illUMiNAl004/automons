@@ -32,10 +32,10 @@ function Game() {
       <motion.div
         key={key}
         className="h-screen w-full"
-        initial={{ opacity: 0, scale: 1.04 }}
+        initial={{ opacity: 0, scale: 1.05 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.32, ease: MOTION.ease }}
+        exit={{ opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: MOTION.ease }}
       >
         {screen}
       </motion.div>

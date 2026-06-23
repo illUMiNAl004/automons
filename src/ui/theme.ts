@@ -144,9 +144,36 @@ export const SCENE = {
  * depth-of-field blur applied to the far background so creatures pop.
  */
 export const ATMOSPHERE = {
-  vignette: 'radial-gradient(125% 105% at 50% 36%, rgba(0,0,0,0) 52%, rgba(10,8,26,0.50) 100%)',
-  grade: 'linear-gradient(180deg, rgba(255,228,176,0.10) 0%, rgba(255,255,255,0) 42%, rgba(34,26,72,0.16) 100%)',
+  // Stronger, cinematic vignette — darkens the edges hard for a "stage" feel.
+  vignette: 'radial-gradient(135% 115% at 50% 30%, rgba(0,0,0,0) 38%, rgba(4,6,14,0.74) 100%)',
+  // Cool, slightly desaturated grade: dark cool wash top & bottom, clear centre.
+  grade: 'linear-gradient(180deg, rgba(14,20,38,0.42) 0%, rgba(12,16,30,0.04) 34%, rgba(6,9,20,0.55) 100%)',
+  // A faint cool tint over the whole scene to unify (mix-blend soft-light).
+  tint: 'rgba(70,96,150,0.16)',
+  // Filter applied to the backdrop image for maturity (de-candy it a touch).
+  bgFilter: 'saturate(0.88) contrast(1.07) brightness(0.9)',
   farBlurPx: 3,
+};
+
+/**
+ * UI — the modern chrome palette (dark glass + cool glow accents). Replaces the
+ * toy carved-wood look for HUD / buttons / panels / pedestals.
+ */
+export const UI = {
+  panel: 'rgba(16,20,32,0.74)',
+  panelHi: 'rgba(255,255,255,0.07)',
+  panelBorder: 'rgba(150,180,230,0.22)',
+  inset: 'rgba(0,0,0,0.36)',
+  accent: '#7fb0ff', // cool blue accent
+  accentDim: 'rgba(127,176,255,0.45)',
+  glow: 'rgba(120,170,255,0.55)',
+  gold: '#ffd07a',
+  danger: '#ff6b7a',
+  text: '#eef2fb',
+  textDim: 'rgba(232,238,250,0.62)',
+  stoneTop: '#434b60',
+  stoneBottom: '#222838',
+  stoneEdge: '#11141d',
 };
 
 /** Max pointer-parallax offset (px) per depth layer — far drifts least. */

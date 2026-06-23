@@ -20,6 +20,7 @@ import { makeInstance } from '../../engine/battle';
 import { CONFIG } from '../../engine/config';
 import { getTeam } from '../../engine/shop';
 import { getMonsterDef } from '../../engine/data/monsters';
+import { UI } from '../theme';
 import { Stage } from '../components/Stage';
 import { Hud } from '../components/Hud';
 import { Signpost } from '../components/Signpost';
@@ -116,10 +117,10 @@ export function ShopScreen() {
               </div>
             </Lane>
 
-            {/* SHOP — recruits on crates */}
-            <Lane>
-              <div className="mb-7 mr-1">
-                <Signpost label="Shop" />
+            {/* SHOP — recruits on stone pedestals, with breathing room */}
+            <Lane gap="gap-6">
+              <div className="mb-8 mr-2">
+                <Signpost label="Recruit" />
               </div>
               {monsterPreviews.map((preview, i) => (
                 <ShopMonsterPedestal
@@ -132,7 +133,10 @@ export function ShopScreen() {
                   onQuickBuy={() => actions.buyMonster(i)}
                 />
               ))}
-              <div className="mx-1 mb-12 h-14 w-px bg-black/15" />
+              <div className="mx-2 mb-10 h-20 w-px" style={{ background: UI.panelBorder }} />
+              <div className="mb-8 mr-1">
+                <Signpost label="Items" />
+              </div>
               {state.shop.itemSlots.map((item, i) => (
                 <ShopItemPedestal
                   key={`${state.seed}:i${i}`}
@@ -148,7 +152,7 @@ export function ShopScreen() {
 
           {/* corner controls */}
           <div className="absolute bottom-4 left-5">
-            <WoodButton label="Roll" icon="🎲" onClick={actions.reroll} disabled={state.gold < CONFIG.rerollCost} />
+            <WoodButton label="Roll" icon="🎲" tone="ghost" onClick={actions.reroll} disabled={state.gold < CONFIG.rerollCost} />
           </div>
           <div className="absolute bottom-4 right-5">
             <WoodButton label="End turn" icon="⚔️" onClick={actions.startBattle} disabled={teamN === 0} />
@@ -169,8 +173,8 @@ export function ShopScreen() {
   );
 }
 
-function Lane({ children }: { children: ReactNode }) {
-  return <div className="flex items-end justify-center gap-1">{children}</div>;
+function Lane({ children, gap = 'gap-4' }: { children: ReactNode; gap?: string }) {
+  return <div className={`flex items-end justify-center ${gap}`}>{children}</div>;
 }
 
 function DragGhost({ active, previews }: { active: DragData; previews: (ReturnType<typeof makeInstance> | null)[] }) {

@@ -10,7 +10,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import type { ItemDef, MonsterInstance } from '../../engine/types';
-import { ELEMENTS, MOTION, PARTICLES, SCENE, SHADOW } from '../theme';
+import { ELEMENTS, MOTION, PARTICLES, SHADOW, UI } from '../theme';
 import { monsterEmoji, monsterImage, itemEmoji } from '../art';
 import { abilityText, triggerLabel } from '../abilityText';
 import { phaseFor } from '../idle';
@@ -138,7 +138,7 @@ function Popover({ monster }: { monster: MonsterInstance }) {
   return (
     <div
       className="pointer-events-none absolute -top-1 left-1/2 z-30 w-44 -translate-x-1/2 -translate-y-full rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
-      style={{ background: SCENE.parchment, color: '#4a3a22', border: `2px solid ${SCENE.parchmentEdge}` }}
+      style={{ background: UI.panel, color: UI.text, border: `1px solid ${UI.panelBorder}`, backdropFilter: 'blur(8px)', boxShadow: '0 10px 28px rgba(0,0,0,0.55)' }}
     >
       <div className="font-bold">
         {monster.name}
@@ -153,7 +153,7 @@ function Popover({ monster }: { monster: MonsterInstance }) {
       ) : (
         <div className="mt-0.5 opacity-60">No ability</div>
       )}
-      <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45" style={{ background: SCENE.parchment, borderRight: `2px solid ${SCENE.parchmentEdge}`, borderBottom: `2px solid ${SCENE.parchmentEdge}` }} />
+      <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45" style={{ background: UI.panel, borderRight: `1px solid ${UI.panelBorder}`, borderBottom: `1px solid ${UI.panelBorder}` }} />
     </div>
   );
 }
@@ -239,10 +239,13 @@ export function TeamSlot({ index, monster }: { index: number; monster: MonsterIn
 function FrontFlag() {
   return (
     <div className="pointer-events-none absolute bottom-3 left-1 z-20 flex flex-col items-center">
-      <div className="rounded-sm px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: SCENE.orange, boxShadow: `0 1px 3px rgba(0,0,0,0.4)` }}>
-        ⚔ FRONT
+      <div
+        className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white"
+        style={{ background: `linear-gradient(180deg, ${UI.accent}, #3f6fd0)`, boxShadow: `0 0 10px ${UI.glow}`, border: `1px solid ${UI.panelBorder}` }}
+      >
+        ⚔ Front
       </div>
-      <div style={{ width: 3, height: 16, background: SCENE.woodDark }} />
+      <div style={{ width: 3, height: 14, background: UI.stoneEdge }} />
     </div>
   );
 }
@@ -316,7 +319,7 @@ export function ItemFigure({ item, lifted = false }: { item: ItemDef; lifted?: b
     <div className="group relative flex flex-col items-center" style={{ width: SLOT_W }}>
       <div
         className="pointer-events-none absolute -top-1 left-1/2 z-30 w-40 -translate-x-1/2 -translate-y-full rounded-xl px-3 py-2 text-center text-[11px] leading-snug opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
-        style={{ background: SCENE.parchment, color: '#4a3a22', border: `2px solid ${SCENE.parchmentEdge}` }}
+        style={{ background: UI.panel, color: UI.text, border: `1px solid ${UI.panelBorder}`, backdropFilter: 'blur(8px)', boxShadow: '0 10px 28px rgba(0,0,0,0.55)' }}
       >
         <div className="font-bold">{item.name}</div>
         <div className="mt-0.5">{item.description}</div>
@@ -368,10 +371,16 @@ export function ShopItemPedestal({
 function PriceCoin({ cost, affordable }: { cost: number; affordable: boolean }) {
   return (
     <div
-      className="absolute bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full px-2 py-0.5 text-[12px] font-bold"
-      style={{ background: affordable ? '#ffd24a' : '#b6a468', color: '#5a3f00', boxShadow: '0 0 0 2px #b8860b, 0 2px 4px rgba(0,0,0,0.3)' }}
+      className="absolute bottom-0 left-1/2 z-20 -translate-x-1/2 rounded-full px-2 py-0.5 text-[12px] font-bold"
+      style={{
+        background: UI.panel,
+        color: affordable ? UI.gold : UI.textDim,
+        border: `1px solid ${affordable ? 'rgba(255,208,122,0.5)' : UI.panelBorder}`,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+      }}
     >
-      🪙{cost}
+      🪙 {cost}
     </div>
   );
 }
@@ -384,11 +393,16 @@ function FreezeKnob({ frozen, onClick }: { frozen: boolean; onClick: () => void 
         e.stopPropagation();
         onClick();
       }}
-      className="absolute right-2 top-1 z-30 flex h-7 w-7 items-center justify-center rounded-full text-sm transition-transform hover:scale-110 active:scale-90"
-      style={{ background: frozen ? SCENE.skyHorizon : 'rgba(255,255,255,0.9)', boxShadow: '0 2px 5px rgba(0,0,0,0.35)' }}
-      title={frozen ? 'Unfreeze' : 'Freeze for next turn'}
+      className="absolute right-1.5 top-1 z-30 flex h-7 w-7 items-center justify-center rounded-full text-[13px] transition-transform hover:scale-110 active:scale-90"
+      style={{
+        background: frozen ? `linear-gradient(180deg, ${UI.accent}, #3f6fd0)` : UI.panel,
+        border: `1px solid ${UI.panelBorder}`,
+        boxShadow: frozen ? `0 0 12px ${UI.glow}` : '0 2px 6px rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+      }}
+      title={frozen ? 'Locked — click to unlock' : 'Lock this slot for next turn'}
     >
-      {frozen ? '❄️' : '🧊'}
+      {frozen ? '🔒' : '🔓'}
     </button>
   );
 }

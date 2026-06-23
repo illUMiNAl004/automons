@@ -15,9 +15,11 @@ import { Stage } from '../components/Stage';
 import { Hud } from '../components/Hud';
 import { WoodButton } from '../components/WoodButton';
 import { PetFigure } from '../components/Pet';
-import { MOTION } from '../theme';
+import { getMonsterDef } from '../../engine/data/monsters';
+import { MOTION, UI } from '../theme';
 
 type FloatText = { key: number; text: string; color: string };
+type Entrance = { subtype: string; displayName: string; side: Side };
 
 // Per-event pacing (ms). Punchy but readable.
 const DELAY: Partial<Record<BattleEvent['kind'], number>> = {
@@ -47,6 +49,7 @@ export function BattleScene() {
   const [intro, setIntro] = useState(false);
   const [showContinue, setShowContinue] = useState(false);
   const [logLine, setLog] = useState<string>('');
+  const [entrance, setEntrance] = useState<Entrance | null>(null);
 
   const aRef = useRef<MonsterInstance[]>([]);
   const bRef = useRef<MonsterInstance[]>([]);
@@ -166,7 +169,18 @@ export function BattleScene() {
       const delay = apply(ev);
       after(delay, tick);
     };
-    after(700, tick);
+
+    // --- dramatic entrances: announce each side's champion before the fight ---
+    const champions: Array<{ m: MonsterInstance; sd: Side }> = [];
+    if (aRef.current[0]) champions.push({ m: aRef.current[0], sd: 'A' });
+    if (bRef.current[0]) champions.push({ m: bRef.current[0], sd: 'B' });
+    const ENTRANCE = 1500;
+    champions.forEach(({ m, sd }, k) => {
+      const def = getMonsterDef(m.speciesId);
+      after(300 + k * ENTRANCE, () => setEntrance({ subtype: def.subtype ?? 'Automon', displayName: def.displayName ?? m.name, side: sd }));
+      after(300 + k * ENTRANCE + ENTRANCE - 250, () => setEntrance(null));
+    });
+    after(300 + champions.length * ENTRANCE + 150, tick);
 
     return () => {
       cancelled = true;
@@ -207,7 +221,7 @@ export function BattleScene() {
         </div>
 
         {/* battle log ticker */}
-        <div className="flex h-6 items-center justify-center">
+        <div className="flex h-7 items-center justify-center">
           <AnimatePresence mode="popLayout">
             {logLine && (
               <motion.span
@@ -215,8 +229,8 @@ export function BattleScene() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="rounded-full px-4 py-1 text-sm font-bold text-white"
-                style={{ background: 'rgba(0,0,0,0.35)' }}
+                className="rounded-full px-4 py-1 text-sm font-semibold"
+                style={{ background: UI.panel, color: UI.text, border: `1px solid ${UI.panelBorder}`, backdropFilter: 'blur(8px)' }}
               >
                 {logLine}
               </motion.span>
@@ -225,6 +239,9 @@ export function BattleScene() {
         </div>
       </div>
       </Stage>
+
+      {/* dramatic creature entrance */}
+      <AnimatePresence>{entrance && <EntranceBanner entrance={entrance} />}</AnimatePresence>
 
       {/* intro flash */}
       <AnimatePresence>
@@ -236,12 +253,12 @@ export function BattleScene() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              initial={{ scale: 0.5, rotate: -8 }}
+              initial={{ scale: 0.5, rotate: -6 }}
               animate={{ scale: 1, rotate: 0 }}
-              className="rounded-3xl px-10 py-4 text-5xl font-black text-white"
-              style={{ background: 'rgba(0,0,0,0.45)', textShadow: '0 3px 8px rgba(0,0,0,0.5)' }}
+              className="rounded-2xl px-12 py-4 text-5xl font-bold tracking-wide text-white"
+              style={{ background: UI.panel, border: `1px solid ${UI.panelBorder}`, backdropFilter: 'blur(10px)', boxShadow: `0 0 40px ${UI.glow}`, textShadow: '0 3px 8px rgba(0,0,0,0.6)' }}
             >
-              ⚔️ BATTLE!
+              ⚔️ BATTLE
             </motion.div>
           </motion.div>
         )}
@@ -322,6 +339,45 @@ function ResultBanner({ winner, showContinue, onContinue }: { winner: BattleWinn
           <WoodButton label="Continue" icon="▶" onClick={onContinue} />
         </motion.div>
       )}
+    </motion.div>
+  );
+}
+
+/** Cinematic "a champion enters" banner using subtype + grand displayName. */
+function EntranceBanner({ entrance }: { entrance: Entrance }) {
+  const fromLeft = entrance.side === 'A';
+  return (
+    <motion.div className="pointer-events-none absolute inset-x-0 top-[30%] z-40 flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div
+        initial={{ x: fromLeft ? -140 : 140, opacity: 0, scale: 0.92 }}
+        animate={{ x: 0, opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.45, ease: MOTION.ease }}
+        className="relative overflow-hidden rounded-2xl px-12 py-5 text-center"
+        style={{
+          background: 'linear-gradient(180deg, rgba(12,16,30,0.94), rgba(7,10,20,0.94))',
+          border: `1px solid ${UI.panelBorder}`,
+          boxShadow: `0 0 55px ${UI.glow}, 0 22px 55px rgba(0,0,0,0.6)`,
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <div className="text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ color: UI.accent }}>
+          {entrance.subtype}
+        </div>
+        <div className="mt-1 text-4xl font-bold text-white" style={{ textShadow: `0 0 22px ${UI.glow}` }}>
+          {entrance.displayName}
+        </div>
+        <div className="mt-1 text-sm tracking-wide" style={{ color: UI.textDim }}>
+          enters the battlefield
+        </div>
+        <motion.div
+          className="absolute inset-y-0 w-1/3"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)' }}
+          initial={{ x: '-160%' }}
+          animate={{ x: '360%' }}
+          transition={{ duration: 0.95, ease: MOTION.ease, delay: 0.18 }}
+        />
+      </motion.div>
     </motion.div>
   );
 }
